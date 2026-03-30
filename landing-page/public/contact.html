@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en" style="background:#0a0a0a">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Contact Us - Bozon AI Labs</title>
+    <link rel="icon" type="image/png" href="/bozon-logo.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+      *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+      :root {
+        --bg: #0a0a0a;
+        --text-primary: #fafafa;
+        --text-secondary: #a1a1aa;
+        --accent: #2f9e7f;
+        --border: #262626;
+      }
+      html {
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        background: var(--bg);
+        color: var(--text-primary);
+        -webkit-font-smoothing: antialiased;
+      }
+      body { min-height: 100vh; display: flex; flex-direction: column; animation: fadeIn 0.3s ease; }
+      @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+      .nav {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 16px 40px;
+      }
+      .nav-logo {
+        display: flex; align-items: center; gap: 10px;
+        font-size: 18px; font-weight: 600; letter-spacing: -0.02em;
+        text-decoration: none; color: var(--text-primary);
+      }
+      .nav-logo img {
+        width: 32px; height: 32px; object-fit: contain;
+      }
+
+      .content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 0 24px;
+      }
+      .content h1 {
+        font-size: 48px; font-weight: 700; letter-spacing: -0.03em;
+        margin-bottom: 24px;
+      }
+      .content h1 .gradient {
+        background: linear-gradient(135deg, #2f9e7f 0%, #5bb89a 50%, #8cd4b8 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+      .content p {
+        font-size: 16px; line-height: 1.7; color: var(--text-secondary);
+        margin-bottom: 8px;
+      }
+      .content a.email {
+        font-size: 18px; font-weight: 600; color: var(--accent);
+        text-decoration: underline; text-underline-offset: 4px;
+        transition: opacity 0.2s;
+      }
+      .content a.email:hover { opacity: 0.8; }
+
+      .footer {
+        border-top: 1px solid var(--border);
+        padding: 32px 40px;
+        display: flex; align-items: center; justify-content: space-between;
+      }
+      .footer p { font-size: 13px; color: var(--text-secondary); }
+      .footer-links {
+        display: flex; gap: 24px; list-style: none;
+      }
+      .footer-links a {
+        font-size: 13px; color: var(--text-secondary);
+        text-decoration: none; transition: color 0.2s;
+      }
+      .footer-links a:hover { color: var(--text-primary); }
+
+      @media (max-width: 768px) {
+        .nav { padding: 14px 20px; }
+        .content h1 { font-size: 32px; }
+        .footer {
+          flex-direction: column; gap: 16px;
+          padding: 24px 20px; text-align: center;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="nav">
+      <a href="/" class="nav-logo">
+        <img src="/bozon-logo.png" alt="Bozon AI Labs" />
+        Bozon AI Labs
+      </a>
+    </nav>
+
+    <main class="content">
+      <h1>Contact <span class="gradient">Us</span></h1>
+      <p>For any queries, feedback, or support requests, please contact us at:</p>
+      <a href="mailto:info@bozonailabs.com" class="email">info@bozonailabs.com</a>
+    </main>
+
+    <footer class="footer">
+      <p>&copy; 2026 Bozon AI Labs. All rights reserved.</p>
+      <ul class="footer-links">
+        <li><a href="/terms">Terms &amp; Conditions</a></li>
+        <li><a href="/privacy">Privacy Policy</a></li>
+      </ul>
+    </footer>
+  </body>
+</html>
