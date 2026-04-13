@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Privacy Policy - Bozon AI Labs</title>
+    <link rel="icon" type="image/png" href="/bozon-logo.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -15,7 +16,7 @@
         --border: #262626;
         --text-primary: #fafafa;
         --text-secondary: #a1a1aa;
-        --accent: #6366f1;
+        --accent: #2f9e7f;
       }
       html {
         font-family: 'Inter', system-ui, -apple-system, sans-serif;
@@ -29,20 +30,15 @@
         position: fixed; top: 0; left: 0; right: 0; z-index: 100;
         display: flex; align-items: center; justify-content: space-between;
         padding: 16px 40px;
-        border-bottom: 1px solid var(--border);
-        background: rgba(10, 10, 10, 0.8);
-        backdrop-filter: blur(12px);
+        background: transparent;
       }
       .nav-logo {
         display: flex; align-items: center; gap: 10px;
         font-size: 18px; font-weight: 600; letter-spacing: -0.02em;
         text-decoration: none; color: var(--text-primary);
       }
-      .nav-logo .logo-icon {
-        width: 32px; height: 32px; border-radius: 8px;
-        background: var(--accent);
-        display: flex; align-items: center; justify-content: center;
-        font-size: 16px; font-weight: 700; color: white;
+      .nav-logo img {
+        width: 32px; height: 32px; object-fit: contain;
       }
 
       .content {
@@ -107,7 +103,7 @@
   <body>
     <nav class="nav">
       <a href="/" class="nav-logo">
-        <div class="logo-icon">B</div>
+        <img src="/bozon-logo.png" alt="Bozon AI Labs" />
         Bozon AI Labs
       </a>
     </nav>
