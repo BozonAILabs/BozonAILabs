@@ -31,7 +31,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
           exam creation, class management, and student performance analytics.
         </p>
       </div>
-      <a href="https://www.12thpass.ai/" target="_blank" class="product-card product-card-link">
+      <a href="https://www.12thpass.ai/" target="_blank" rel="noopener noreferrer" class="product-card product-card-link">
         <img src="/12thpass-logo.png" alt="12thPass" class="product-logo" />
         <h3>12thPass <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; opacity: 0.6;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></h3>
         <p>
@@ -39,6 +39,15 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
           every student preparing for India's competitive exams. Adapts to
           each learner's pace, anticipates needs, and brings clarity to
           every step of preparation.
+        </p>
+      </a>
+      <a href="https://munsi.ai/" target="_blank" rel="noopener noreferrer" class="product-card product-card-link">
+        <div class="product-wordmark" aria-hidden="true">munsi_</div>
+        <h3>Munsi <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; opacity: 0.6;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></h3>
+        <p>
+          A WhatsApp-first business records product that keeps accounts,
+          stock, files, team updates, and reminders structured from everyday
+          messages.
         </p>
       </a>
     </div>
