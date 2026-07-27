@@ -1,7 +1,7 @@
 ---
 version: beta
 name: Bozon-AI-Labs-design-system
-description: Bozon AI Labs' restrained editorial system — near-black and softly green-tinted surfaces, crisp off-white typography, and one logo-derived mint-to-forest gradient used for atmospheric motion and interaction. Green is the only decorative accent; red and amber are reserved for semantic states.
+description: Bozon AI Labs' restrained editorial system, built from near-black and softly green-tinted surfaces, crisp off-white typography, and a logo-derived mint-to-forest point field used for atmospheric motion and interaction. Green is the only decorative accent; red and amber are reserved for semantic states.
 
 colors:
   primary: "#0d3b2e"
@@ -39,6 +39,24 @@ colors:
   selection-fg: "#ffffff"
 
 typography:
+  display-hero:
+    fontFamily: Geist, Inter, system-ui, -apple-system, sans-serif
+    fontSize: 68px
+    fontWeight: 600
+    lineHeight: 68px
+    letterSpacing: -2.72px
+  display-section:
+    fontFamily: Geist, Inter, system-ui, -apple-system, sans-serif
+    fontSize: 60px
+    fontWeight: 600
+    lineHeight: 60px
+    letterSpacing: -2.4px
+  display-mobile:
+    fontFamily: Geist, Inter, system-ui, -apple-system, sans-serif
+    fontSize: 38px
+    fontWeight: 600
+    lineHeight: 38px
+    letterSpacing: -1.52px
   display-xl:
     fontFamily: Geist, Inter, system-ui, -apple-system, sans-serif
     fontSize: 48px
@@ -389,15 +407,16 @@ components:
 
 ## Overview
 
-Bozon AI Labs is an AI product studio. Its marketing surface should feel precise, experimental, and quietly alive: deep forest-black `{colors.canvas}` foundations, crisp off-white `{colors.ink}` typography, and the logo's mint-to-forest green as the sole decorative colour family. Atmospheric shader and scroll effects may move through `{colors.gradient-hero-start}` → `{colors.gradient-hero-mid}` → `{colors.gradient-hero-end}`, but must remain recognisably green at every point.
+Bozon AI Labs is a software services company for growing businesses. Its marketing surface should feel precise, experimental, and quietly alive: deep forest-black `{colors.canvas}` foundations, crisp off-white `{colors.ink}` typography, and the logo's mint-to-forest green as the sole decorative colour family. The primary public promise is high-standard software, fast delivery, and pricing appropriate for growing businesses. Atmospheric canvas and scroll effects may move through `{colors.gradient-hero-start}` → `{colors.gradient-hero-mid}` → `{colors.gradient-hero-end}`, but must remain recognisably green at every point.
 
-Type is the second decisive voice. The brand's own custom geometric sans (Geist) carries display, body, button — everything narrative — at weight 600 for display, 500 for buttons, 400 for body. A matching monospaced face (Geist Mono) carries technical labels: terminal mockups, code blocks, sometimes filename captions. Headlines are sentence-case with aggressive negative letter-spacing (`-2.4px` at 48 px hero) — the brand never letter-spaces positively, never goes uppercase outside of mono labels.
+Type is the second decisive voice. The brand's own custom geometric sans (Geist) carries display, body, button — everything narrative — at weight 600 for display, 500 for buttons, 400 for body. A matching monospaced face (Geist Mono) carries technical labels: terminal mockups, code blocks, sometimes filename captions. Editorial landing headlines may expand to 68 px at wide viewports, with a 60 px section scale and a 38 px mobile display ceiling; denser surfaces retain the original 48 / 32 px ramp. Headlines are sentence-case with aggressive negative letter-spacing — the brand never letter-spaces positively, never goes uppercase outside of mono labels.
 
 Surfaces use a four-step dark-first ladder: `{colors.canvas}` (forest-black page), `{colors.canvas-soft}` (quiet section lift), `{colors.canvas-soft-2}` (elevated or inset region), and `{colors.primary}` (the dark brand-green conversion surface). Light surfaces are exceptional editorial interruptions and use `{colors.canvas-light}` with dark-green text. Shadows are subtle and offset; cards sit in the composition through surface contrast or a hairline, never a generic neon halo.
 
 **Key Characteristics:**
 - A single deep-green primary CTA `{colors.primary}` carries every conversion target. The brand uses a 100 px pill shape for marketing CTAs and a tight 6 px square shape for in-app nav buttons.
-- A restrained mint-to-forest gradient is the only decorative chrome. Use it at hero scale, in shaders, and for deliberate motion highlights—not as scattered badges or rainbow colour stops.
+- A restrained mint-to-forest point field is the signature decorative material. Use it at hero scale and through the three-state services narrative, not as scattered badges or generic background texture.
+- The landing page's authored motion moment expresses the three commitments in order: high standard, speed, and price. It uses one continuous canvas field and releases naturally into product evidence.
 - Every section eyebrow and small label uses the monospace face `{typography.caption-mono}` or `{typography.code}`; everything else is in the geometric sans.
 - Subtle stacked-shadow elevation — three offsets layered with 4-12 % black opacity — never a single heavy drop-shadow.
 - The marketing palette is intentionally narrow: forest-black, off-white, and one green family. Red and amber appear only when error or warning meaning requires them.
@@ -449,7 +468,7 @@ Treat these stops as one monochromatic family. Shaders may vary lightness, opaci
 ### Font Family
 Two custom faces carry the entire system:
 
-1. **A custom geometric sans** (extracted as `Geist`) for every display, body, button, link, and label. Weights 400 / 500 / 600 are the working set; the face never appears in 700 or heavier. Display sizes are tracked aggressively negative (`-2.4 px` at 48 px hero, `-1.28 px` at 32 px section); body stays at neutral or slightly-negative tracking.
+1. **A custom geometric sans** (extracted as `Geist`) for every display, body, button, link, and label. Weights 400 / 500 / 600 are the working set; the face never appears in 700 or heavier. Display sizes are tracked aggressively negative (`-3.2 px` at 80 px editorial hero, `-2.4 px` at 48 px compact hero, `-1.28 px` at 32 px section); body stays at neutral or slightly-negative tracking.
 2. **A custom monospaced face** (extracted as `Geist Mono`) for terminal mockups, code blocks, and small mono-caption labels — anything that wants to signal "technical." Weight 400 only at 12 – 13 px. Tracking neutral.
 
 A condensed display sans (`Space Grotesk`) is loaded as a third face for occasional editorial moments but does not render as the primary face anywhere in the captured surfaces.
@@ -458,6 +477,9 @@ A condensed display sans (`Space Grotesk`) is loaded as a third face for occasio
 
 | Token | Size | Weight | Line Height | Letter Spacing | Use |
 |---|---|---|---|---|---|
+| `{typography.display-hero}` | 80px | 600 | 80px | -3.2px | Wide editorial landing hero. |
+| `{typography.display-section}` | 72px | 600 | 72px | -2.88px | Wide editorial landing section headline. |
+| `{typography.display-mobile}` | 40px | 600 | 40px | -1.6px | Art-directed mobile landing display. |
 | `{typography.display-xl}` | 48px | 600 | 48px | -2.4px | Hero headline ("Build and deploy on the AI Cloud."). |
 | `{typography.display-lg}` | 32px | 600 | 40px | -1.28px | Section headlines ("Your frontend, delivered.", "A compute model for all workloads."). |
 | `{typography.display-md}` | 24px | 600 | 32px | -0.96px | Card-cluster headlines, pricing-tier names. |
@@ -523,6 +545,7 @@ The `button-primary` pill renders at ~32 px tall in nav and ~48 px tall in marke
 #### Collapsing Strategy
 - **Nav**: full link row + Ask AI / Log In / Sign Up pills at desktop. Collapses to logo + hamburger at mobile with the menu opening as a full-overlay.
 - **Hero**: mesh gradient stays centred; headline + body stack vertically at all breakpoints (the brand doesn't use a split-hero pattern).
+- **Product proof**: the two public product panels sit side by side on desktop and become a horizontally scrolling snap rail on mobile, with enough of the next panel visible to signal the gesture.
 - **Three-feature row**: 3-up → 2-up → 1-up at the breakpoints above; cards keep their `{rounded.md}` 8 px shape across all viewports.
 - **Pricing card grid**: 3-up at desktop, vertical stack at mobile with `pricing-card-featured` always sitting in the middle.
 - **Template grid**: 5-up → 3-up → 2-up → 1-up. Each `template-card` keeps its 16:9 aspect on the image.
@@ -655,10 +678,10 @@ The brand uses STACKED shadows — multiple small offsets layered to fake natura
 ### Signature Components
 
 **`hero-band`** — the forest-black hero with the logo-derived green atmospheric backdrop.
-- Background `{colors.canvas}` (or `{colors.canvas-soft}` on some surfaces), text `{colors.ink}`, padding `{spacing.4xl} {spacing.lg}`. Inside: a small mono badge above the headline, the headline in `{typography.display-xl}` (sentence-case, period-terminated), a body lead in `{typography.body-lg}`, then a CTA row with `button-primary` + `button-secondary`. The mesh gradient sits behind, scaled to occupy roughly the top half of the band.
+- Background `{colors.canvas}` (or `{colors.canvas-soft}` on some surfaces), text `{colors.ink}`, padding `{spacing.4xl} {spacing.lg}`. Inside: a small mono badge above the headline, the headline in `{typography.display-hero}` on editorial landing pages or `{typography.display-xl}` on compact surfaces, a body lead in `{typography.body-lg}`, then a CTA row with `button-primary` + `button-secondary`. The mesh gradient sits behind, scaled to occupy roughly the top half of the band.
 
 **`feature-mesh-band`** — the secondary section that hosts a mesh-gradient atmospheric backdrop with feature copy on top.
-- Background `{colors.canvas}`, text `{colors.ink}`, padding `{spacing.5xl} {spacing.lg}`. Section headline in `{typography.display-lg}`; supporting body in `{typography.body-md}`.
+- Background `{colors.canvas}`, text `{colors.ink}`, padding `{spacing.5xl} {spacing.lg}`. Editorial landing section headlines may use `{typography.display-section}`; compact surfaces use `{typography.display-lg}`. Supporting body remains `{typography.body-md}`.
 
 **`showcase-band-light`** — a soft-canvas section ("Deploy your first app in seconds").
 - Background `{colors.canvas-soft}`, text `{colors.ink}`, padding `{spacing.5xl} {spacing.lg}`.
