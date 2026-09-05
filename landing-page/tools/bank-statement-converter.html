@@ -1,8 +1,8 @@
 <!doctype html>
 <!-- THESIS: a practical document-to-ledger workspace, with review as the main task.
 OWN-WORLD: existing Bozon forest green, off-white, Caslon headings and readable Geist controls.
-STORY: understand the output and allowance, sign in, convert, review against source, download.
-FIRST VIEWPORT: compact brand navigation; left editorial introduction, right sign-in/upload workbench.
+STORY: understand the output and allowance, enter contact details, convert, review against source, download.
+FIRST VIEWPORT: compact brand navigation; left editorial introduction, right contact/upload workbench.
 FORM: approved sequential flow leading to a full-width split source/table review. -->
 <html lang="en">
   <head>
@@ -13,7 +13,7 @@ FORM: approved sequential flow leading to a full-width split source/table review
     </title>
     <meta
       name="description"
-      content="Turn bank statement PDFs into Excel or Xero CSV. Review transactions against the original, check balances and download. 50 free pages per account."
+      content="Turn bank statement PDFs into Excel or Xero CSV. Review transactions against the original, check balances and download. 50 free pages in this browser."
     />
     <link
       rel="canonical"
@@ -38,7 +38,7 @@ FORM: approved sequential flow leading to a full-width split source/table review
       <nav aria-label="Main">
         <a href="/">Our approach</a
         ><a href="mailto:dev@bozonailabs.com">Let’s talk ↗</a
-        ><button id="signout" hidden>Sign out</button>
+        ><button id="signout" hidden>End session</button>
       </nav>
     </header>
     <main id="main" class="wrap converter">
@@ -52,45 +52,19 @@ FORM: approved sequential flow leading to a full-width split source/table review
           </p>
           <p id="banks" class="small"></p>
           <p class="allowance-note">
-            50 free pages. No card. Yours to use once or over time.
+            50 free pages in this browser. No card or password.
           </p>
         </div>
         <section id="workbench" class="workbench" aria-labelledby="work-title">
           <h2 id="work-title">Bank statement converter</h2>
           <p id="availability" role="status">Checking availability…</p>
-          <div id="signin" hidden>
-            <p>Sign in to use your free pages.</p>
-            <button id="google" class="action">Continue with Google</button
-            ><button id="apple" class="secondary">Continue with Apple</button>
-            <p class="small">
-              By continuing, you accept our <a href="/terms">terms</a> and
-              <a href="/privacy">privacy notice</a>.
-            </p>
-          </div>
           <form id="profile" hidden>
-            <h3>A little about your practice</h3>
-            <label
-              >Your name<input
-                name="name"
-                required
-                maxlength="120"
-                autocomplete="name" /></label
-            ><label
-              >Practice name<input
-                name="practice"
-                required
-                maxlength="180"
-                autocomplete="organization" /></label
-            ><label
-              >Your role<select name="role" required>
-                <option value="">Choose your role</option>
-                <option>Owner / partner</option>
-                <option>Accountant</option>
-                <option>Bookkeeper</option>
-                <option>Practice manager</option>
-                <option>Other</option>
-              </select></label
-            ><button class="action">Save and continue</button>
+            <h3>Start your free conversion</h3>
+            <label>Your name<input name="name" required maxlength="120" autocomplete="name" /></label>
+            <label>Your email<input name="email" type="email" required maxlength="254" autocomplete="email" /></label>
+            <label>Practice name<input name="practice" required maxlength="180" autocomplete="organization" /></label>
+            <p class="small">By continuing, you accept our <a href="/terms">terms</a> and <a href="/privacy#converter">privacy notice</a>. Your results stay in this browser session.</p>
+            <button class="action">Continue to converter</button>
           </form>
           <form id="upload" hidden>
             <p id="allowance" class="allowance"></p>

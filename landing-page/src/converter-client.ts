@@ -1,22 +1,19 @@
 import { createClient } from "@supabase/supabase-js";
 const url = import.meta.env.VITE_SUPABASE_URL;
-const key =
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
   import.meta.env.VITE_SUPABASE_ANON_KEY;
-export const configured =
-  !!url &&
+export const configured = !!url &&
   !!key &&
-  import.meta.env.VITE_CONVERTER_ENABLED === "true" &&
-  import.meta.env.VITE_DEPLOYMENT_ENV !== "preview";
+  import.meta.env.VITE_CONVERTER_ENABLED !== "false";
 export const client = configured
   ? createClient(url, key, {
-      auth: {
-        flowType: "pkce",
-        detectSessionInUrl: false,
-        persistSession: true,
-        autoRefreshToken: true,
-      },
-    })
+    auth: {
+      flowType: "pkce",
+      detectSessionInUrl: false,
+      persistSession: true,
+      autoRefreshToken: true,
+    },
+  })
   : null;
 export async function api(
   action: string,
@@ -54,13 +51,12 @@ export async function api(
   return action === "source" ? response.blob() : response.json();
 }
 const messages: Record<string, string> = {
-  SIGN_IN: "Please sign in again.",
-  SOCIAL_LOGIN_REQUIRED: "Please use Google or Apple to sign in.",
+  SIGN_IN: "Your session has expired. Please enter your details to continue.",
   UNAVAILABLE: "The converter is not available yet.",
   ALLOWANCE: "This statement exceeds your remaining free pages.",
   ACTIVE_JOB: "You already have a conversion running. Open it below.",
   RATE_LIMIT: "Too many uploads. Please try again in an hour.",
-  PROFILE_REQUIRED: "Please complete your practice details.",
+  PROFILE_REQUIRED: "Please enter your name, a valid email and practice name.",
   INVALID_PDF: "Choose a valid PDF bank statement.",
   INVALID_OR_ENCRYPTED_PDF:
     "We can’t open that PDF. Remove its password or upload a fresh copy.",

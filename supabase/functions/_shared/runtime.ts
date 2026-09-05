@@ -44,15 +44,7 @@ export async function user(req: Request) {
   const token = req.headers.get('authorization')?.replace(/^Bearer /, '');
   if (!token) throw new AppError('SIGN_IN', 401);
   const { data, error } = await db().auth.getUser(token);
-  if (error || !data.user || data.user.is_anonymous) throw new AppError('SIGN_IN', 401);
-  // OAuth identities come from the Auth server, never user-editable metadata.
-  if (
-    !data.user.identities?.some((i) => ['google', 'apple'].includes(i.provider)) &&
-    !(Deno.env.get('ALLOW_LOCAL_TEST_AUTH') === 'true' &&
-      ['kong', '127.0.0.1', 'localhost', 'supabase_kong_BozonAILabs'].includes(
-        new URL(Deno.env.get('SUPABASE_URL')!).hostname,
-      ))
-  ) throw new AppError('SOCIAL_LOGIN_REQUIRED', 403);
+  if (error || !data.user) throw new AppError('SIGN_IN', 401);
   return data.user;
 }
 export async function removeObject(path: string, id: string | null) {
@@ -88,4 +80,32 @@ export async function readLimited(req: Request, limit: number): Promise<Uint8Arr
     offset += part.length;
   }
   return result;
+}
+
+export function isLocalRuntime() {
+  return ['kong', '127.0.0.1', 'localhost', 'supabase_kong_BozonAILabs'].includes(
+    new URL(Deno.env.get('SUPABASE_URL')!).hostname,
+  );
+}
+
+/** Best-effort prompt dispatch. Durable queue + minute Cron recover interruptions. */
+export function wakeWorker() {
+  if (isLocalRuntime() && Deno.env.get('LOCAL_MANUAL_WORKER') === 'true') return;
+  const secret = Deno.env.get('CONVERTER_WORKER_TOKEN');
+  const base = Deno.env.get('SUPABASE_URL');
+  if (!secret || !base) return;
+  const task = fetch(`${base}/functions/v1/converter-worker`, {
+    method: 'POST',
+    headers: { 'x-worker-token': secret, 'Content-Type': 'application/json' },
+    body: '{}',
+    signal: AbortSignal.timeout(110000),
+  }).then(async (response) => {
+    await response.body?.cancel();
+  }).catch(() => {
+    // Never log URLs, tokens, provider responses or document content.
+  });
+  const runtime =
+    (globalThis as unknown as { EdgeRuntime?: { waitUntil(task: Promise<unknown>): void } })
+      .EdgeRuntime;
+  runtime?.waitUntil(task);
 }

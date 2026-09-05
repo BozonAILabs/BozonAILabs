@@ -32,7 +32,7 @@ jobs:
       - name: Serve local API
         run: |
           cat > /tmp/functions.env <<'ENV'
-          ALLOW_LOCAL_TEST_AUTH=true
+          LOCAL_MANUAL_WORKER=true
           CONVERTER_WORKER_TOKEN=local-test-worker
           MISTRAL_API_KEY=local-placeholder-do-not-call-provider
           ENV

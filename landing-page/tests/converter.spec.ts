@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import ExcelJS from "exceljs";
 const id = "11111111-1111-4111-8111-111111111111";
 const statement = {
@@ -31,16 +31,16 @@ async function setup(
   const user = {
     id,
     email: "test@example.test",
-    app_metadata: { provider: "google" },
+    app_metadata: { provider: "anonymous" },
+    is_anonymous: true,
     user_metadata: { full_name: "Test User" },
     aud: "authenticated",
     created_at: new Date().toISOString(),
   };
-  if (signedIn)
+  if (signedIn) {
     await page.addInitScript(
       ({ user }) => {
-        const token =
-          btoa(JSON.stringify({ alg: "HS256" })) +
+        const token = btoa(JSON.stringify({ alg: "HS256" })) +
           "." +
           btoa(
             JSON.stringify({
@@ -63,6 +63,7 @@ async function setup(
       },
       { user },
     );
+  }
   let current = structuredClone(statement),
     revision = 0,
     deleted = false,
@@ -70,12 +71,14 @@ async function setup(
     hasJob = !onboarding,
     jobState = "review";
   await page.route("**/auth/v1/**", async (route) => {
-    if (route.request().url().includes("/settings"))
+    if (route.request().url().includes("/settings")) {
       return route.fulfill({
-        json: { external: { google: true, apple: true } },
+        json: { external: { anonymous_users: true } },
       });
-    if (route.request().url().includes("/logout"))
+    }
+    if (route.request().url().includes("/logout")) {
       return route.fulfill({ status: 204 });
+    }
     return route.fulfill({ json: user });
   });
   await page.route("**/functions/v1/converter-api**", async (route) => {
@@ -91,20 +94,22 @@ async function setup(
       revision,
       content: { corrected: current },
     };
-    if (action === "capabilities")
+    if (action === "capabilities") {
       return route.fulfill({
         json: { version: 1, enabled: true, banks: ["NatWest"] },
       });
-    if (action === "account")
+    }
+    if (action === "account") {
       return route.fulfill({
         json: {
           remaining: 49,
           profile: profileDone
-            ? { name: "Test", practice: "Test", role: "Accountant" }
+            ? { name: "Test", practice: "Test", email: "test@example.test" }
             : null,
           jobs: deleted || !hasJob ? [] : [job],
         },
       });
+    }
     if (action === "profile") {
       profileDone = true;
       return route.fulfill({ json: {} });
@@ -122,18 +127,19 @@ async function setup(
       if (delayedGet) await new Promise((r) => setTimeout(r, 500));
       return route.fulfill({ json: job });
     }
-    if (action === "source")
+    if (action === "source") {
       return route.fulfill({
         body: "%PDF-1.4\n%%EOF",
         contentType: "application/pdf",
       });
+    }
     if (action === "edit") {
       if (delayedSave) await new Promise((r) => setTimeout(r, 400));
       current = body.statement;
       revision++;
       return route.fulfill({ json: { revision } });
     }
-    if (action === "export")
+    if (action === "export") {
       return route.fulfill({
         json: {
           statement: current,
@@ -143,25 +149,21 @@ async function setup(
           ],
         },
       });
+    }
     if (action === "delete") deleted = true;
     return route.fulfill({ json: {} });
   });
   await page.goto("/tools/bank-statement-converter");
 }
-test("banks and both providers visible before login; mobile layout fits", async ({
-  page,
-}) => {
+test("contact gate replaces OAuth and fits mobile", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await setup(page, { signedIn: false });
-  await expect(
-    page.getByText("Validated banks: NatWest.", { exact: false }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Continue with Google" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Continue with Apple" }),
-  ).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Your email" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Continue to converter" }))
+    .toBeVisible();
+  await expect(page.getByRole("button", { name: /Google|Apple/ })).toHaveCount(
+    0,
+  );
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,
@@ -172,9 +174,7 @@ test("banks and both providers visible before login; mobile layout fits", async 
     fullPage: true,
   });
 });
-test("editable review, mobile source switch, Excel workbook and deletion", async ({
-  page,
-}) => {
+test("editable review, mobile source switch, Excel workbook and deletion", async ({ page }) => {
   await setup(page);
   await page.getByRole("button", { name: /Ready to review/ }).click();
   await expect(
@@ -232,14 +232,13 @@ test("edits during save remain unsaved", async ({ page }) => {
     page.getByRole("button", { name: "Download Excel" }),
   ).toBeDisabled();
 });
-test("late financial response cannot restore content after sign-out", async ({
-  page,
-}) => {
+test("late financial response cannot restore content after sign-out", async ({ page }) => {
   await setup(page, { delayedGet: true });
   await page.getByRole("button", { name: /Ready to review/ }).click();
-  await page.getByRole("button", { name: "Sign out" }).click();
+  page.on("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: "End session" }).click();
   await expect(
-    page.getByRole("button", { name: "Continue with Google" }),
+    page.getByRole("button", { name: "Continue to converter" }),
   ).toBeVisible();
   await page.waitForTimeout(650);
   await expect(page.locator("#review")).toBeHidden();
@@ -250,10 +249,10 @@ test("first-use profile and upload reach review", async ({ page }) => {
   await setup(page, { onboarding: true });
   await page.getByLabel("Your name", { exact: true }).fill("Test User");
   await page.getByLabel("Practice name", { exact: true }).fill("Test Practice");
-  await page
-    .getByRole("combobox", { name: "Your role", exact: true })
-    .selectOption("Accountant");
-  await page.getByRole("button", { name: "Save and continue" }).click();
+  await page.getByRole("textbox", { name: "Your email" }).fill(
+    "test@example.test",
+  );
+  await page.getByRole("button", { name: "Continue to converter" }).click();
   await page
     .getByLabel("Choose a bank statement", { exact: true })
     .setInputFiles({
@@ -269,12 +268,9 @@ test("first-use profile and upload reach review", async ({ page }) => {
     page.getByText("Balance matches", { exact: true }),
   ).toBeVisible();
 });
-test("cancelled OAuth callback gives recovery link", async ({ page }) => {
+test("old authentication links return to the contact form", async ({ page }) => {
+  await setup(page, { signedIn: false });
   await page.goto("/auth/callback?error=access_denied");
-  await expect(
-    page.getByText("Sign-in was cancelled or unavailable.", { exact: false }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: "Return to the converter" }),
-  ).toHaveAttribute("href", "/tools/bank-statement-converter");
+  await expect(page).toHaveURL(/tools\/bank-statement-converter/);
+  await expect(page.getByRole("textbox", { name: "Your email" })).toBeVisible();
 });

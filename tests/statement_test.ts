@@ -189,6 +189,19 @@ Deno.test('encrypted PDFs are rejected without ignoring encryption', async () =>
   );
   await assertRejects(async () => validatePdf(await pdf.save()));
 });
+Deno.test('incomplete or unsupported OCR chunks fail before advancing the checkpoint', async () => {
+  const original = globalThis.fetch;
+  try {
+    for (const flags of [{ complete: false, supported: true }, { complete: true, supported: false }]) {
+      globalThis.fetch = () => Promise.resolve(Response.json({
+        document_annotation: { ...sample, ...flags },
+      }));
+      await assertRejects(() => extract('x', 0, 8, 'x'), Error, 'UNSUPPORTED_OR_INCOMPLETE');
+    }
+  } finally {
+    globalThis.fetch = original;
+  }
+});
 Deno.test('large exact integer totals cannot overflow into a false balance pass', () => {
   const s = structuredClone(sample);
   s.opening = 0;

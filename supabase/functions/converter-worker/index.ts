@@ -1,4 +1,4 @@
-import { db, removeObject } from '../_shared/runtime.ts';
+import { AppError, db, removeObject, wakeWorker } from '../_shared/runtime.ts';
 import { type Chunk, combine, extract } from '../_shared/extraction.ts';
 import { checkStatement } from '../_shared/statement.ts';
 Deno.serve(async (req) => {
@@ -16,14 +16,23 @@ Deno.serve(async (req) => {
   if (error) return new Response('Queue unavailable', { status: 503 });
   if (!job) return Response.json({ idle: true });
   try {
-    const ttl = Math.min(120, Math.floor((Date.parse(job.expires_at) - Date.now()) / 1000));
-    if (ttl < 1) return Response.json({ expired: true });
-    const { data, error: signError } = await client.storage.from('statements').createSignedUrl(
+    if (Date.parse(job.expires_at) <= Date.now()) return Response.json({ expired: true });
+    // Send the private file itself: external OCR cannot reach local Docker storage URLs.
+    const { data, error: downloadError } = await client.storage.from('statements').download(
       job.object_path,
-      ttl,
     );
-    if (signError || !data) throw new Error('STORAGE');
-    const chunk = await extract(data.signedUrl, job.next_page, job.pages, key);
+    if (downloadError || !data) throw new Error('STORAGE');
+    const bytes = new Uint8Array(await data.arrayBuffer());
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += 32768) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + 32768));
+    }
+    const chunk = await extract(
+      `data:application/pdf;base64,${btoa(binary)}`,
+      job.next_page,
+      job.pages,
+      key,
+    );
     let final = null;
     if (chunk.through === job.pages) {
       final = combine([...(job.chunks as Chunk[]), chunk], job.pages);
@@ -40,8 +49,14 @@ Deno.serve(async (req) => {
       final_result: final,
     });
     if (saveError) throw new Error('CHECKPOINT');
+    if (!final) wakeWorker();
     return Response.json({ processed: true });
-  } catch {
+  } catch (error) {
+    const code = error instanceof AppError ? error.code : error instanceof Error &&
+        ['STORAGE', 'UNVALIDATED_BANK', 'CHECKPOINT'].includes(error.message)
+      ? error.message
+      : 'PROCESSING_FAILED';
+    console.error('converter_worker_failed', code);
     // Queue visibility and bounded claim attempts recover this job. Never log document/provider payloads.
     return Response.json({ retry: true }, { status: 503 });
   }

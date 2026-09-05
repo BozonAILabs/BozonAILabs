@@ -8,3 +8,6 @@ node_modules/
 
 landing-page/test-results/
 landing-page/playwright-report/
+
+# Local runtime credentials, sessions and verification downloads
+.local/

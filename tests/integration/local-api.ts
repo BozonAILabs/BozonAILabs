@@ -41,26 +41,18 @@ try {
     true,
   );
   for (let i = 0; i < 2; i++) {
-    const email = `converter-test-${crypto.randomUUID()}@example.test`,
-      password = crypto.randomUUID();
-    const { data, error } = await admin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-    });
-    if (error) throw error;
     const client = createClient(url, anon, { auth: { persistSession: false } });
-    const { data: session, error: loginError } = await client.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { data: session, error: loginError } = await client.auth.signInAnonymously();
     if (loginError) throw loginError;
+    const data = { user: session.user! };
     users.push({ id: data.user.id, token: session.session!.access_token, client });
+    assertEquals((await call(i, 'create')).data.error, 'PROFILE_REQUIRED');
+    assertEquals((await call(i, 'profile', {name:'Test',practice:'Test',email:'invalid'})).status, 400);
     assertEquals(
       (await call(i, 'profile', {
         name: 'Test',
         practice: 'Synthetic Practice',
-        role: 'Accountant',
+        email: 'same-contact@example.test',
       })).status,
       200,
     );

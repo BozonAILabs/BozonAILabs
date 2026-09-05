@@ -21,8 +21,9 @@ let active: any = null,
   timer: number | undefined,
   expiryTimer: number | undefined;
 const error = (e: unknown) => {
-  $("error").textContent =
-    e instanceof Error ? e.message : "Something went wrong. Please try again.";
+  $("error").textContent = e instanceof Error
+    ? e.message
+    : "Something went wrong. Please try again.";
   $("error").hidden = false;
 };
 const run = async (fn: () => Promise<void>) => {
@@ -36,10 +37,10 @@ const run = async (fn: () => Promise<void>) => {
 };
 const stage = (id: string) => {
   const focused = document.activeElement;
-  const hidingFocus = ["signin", "profile", "upload", "quota", "progress"].some(
+  const hidingFocus = ["profile", "upload", "quota", "progress"].some(
     (name) => name !== id && $(name).contains(focused),
   );
-  for (const name of ["signin", "profile", "upload", "quota", "progress"]) {
+  for (const name of ["profile", "upload", "quota", "progress"]) {
     $(name).hidden = name !== id;
   }
   if (hidingFocus) {
@@ -78,7 +79,9 @@ function check() {
   const list = document.createElement("ul");
   for (const issue of checks.issues) {
     const li = document.createElement("li");
-    li.textContent = `${issue.row !== undefined ? `Row ${issue.row + 1}: ` : ""}${issue.message}`;
+    li.textContent = `${
+      issue.row !== undefined ? `Row ${issue.row + 1}: ` : ""
+    }${issue.message}`;
     list.append(li);
   }
   $("checks").replaceChildren(title, list);
@@ -144,21 +147,11 @@ async function account(autoOpen = true) {
     b.onclick = () => void run(() => open(j.id));
     $("job-list").append(b);
   }
-  if (!a.profile) {
+  if (!a.profile?.email) {
     stage("profile");
-    const { data } = await client!.auth.getUser();
-    if (started !== epoch) return;
-    const name = data.user?.user_metadata?.full_name;
-    if (typeof name === "string") {
-      (
-        $<HTMLFormElement>("profile").elements.namedItem(
-          "name",
-        ) as HTMLInputElement
-      ).value = name;
-    }
   } else {
     const pending = a.jobs.find((j: any) =>
-      ["uploading", "queued", "processing"].includes(j.state),
+      ["uploading", "queued", "processing"].includes(j.state)
     );
     if (pending && autoOpen) await open(pending.id);
     else if (!pending) stage(a.remaining > 0 ? "upload" : "quota");
@@ -206,9 +199,11 @@ async function open(id: string, retry = 0) {
     $("review").hidden = false;
     $<HTMLInputElement>("ack").checked = false;
     $("save-status").textContent = "";
-    $("expiry").textContent = `File and transactions expire ${new Date(
-      job.expires_at,
-    ).toLocaleString("en-GB")}.`;
+    $("expiry").textContent = `File and transactions expire ${
+      new Date(
+        job.expires_at,
+      ).toLocaleString("en-GB")
+    }.`;
     renderRows();
     await account(false);
     if (!current()) return;
@@ -236,10 +231,9 @@ async function open(id: string, retry = 0) {
     }
   } else if (["queued", "processing", "uploading"].includes(job.state)) {
     stage("progress");
-    $("progress-text").textContent =
-      job.state === "uploading"
-        ? "Waiting for your PDF upload. Delete this conversion if the upload was interrupted."
-        : `${job.next_page} of ${job.pages} pages prepared. This can take a few minutes.`;
+    $("progress-text").textContent = job.state === "uploading"
+      ? "Waiting for your PDF upload. Delete this conversion if the upload was interrupted."
+      : `${job.next_page} of ${job.pages} pages prepared. This can take a few minutes.`;
     timer = window.setTimeout(() => void run(() => open(id)), 5000);
   }
 }
@@ -250,32 +244,48 @@ function signedOut() {
   $("recent").hidden = true;
   $("job-list").replaceChildren();
   $("signout").hidden = true;
-  stage("signin");
-}
-for (const provider of ["google", "apple"] as const) {
-  $(provider).onclick = () =>
-    void run(async () => {
-      const { error: e } = await client!.auth.signInWithOAuth({
-        provider,
-        options: { redirectTo: `${location.origin}/auth/callback` },
-      });
-      if (e) throw new Error("Sign-in is unavailable. Please try again.");
-    });
+  stage("profile");
 }
 $("signout").onclick = () =>
   void run(async () => {
+    if (
+      !confirm(
+        "End this private session? You won’t be able to reopen its results afterward.",
+      )
+    ) return;
     signedOut();
+    $<HTMLFormElement>("profile").reset();
     const { error: signoutError } = await client!.auth.signOut();
-    if (signoutError)
-      throw new Error("Sign-out could not be completed. Please retry.");
+    if (signoutError) {
+      $("signout").hidden = false;
+      error(new Error("Ending the session could not be completed. Please retry."));
+    }
   });
 $<HTMLFormElement>("profile").onsubmit = (e) => {
   e.preventDefault();
+  const form = e.currentTarget as HTMLFormElement;
+  const button = form.querySelector<HTMLButtonElement>("button")!;
+  if (button.disabled) return;
+  const fields = Object.fromEntries(new FormData(form));
+  button.disabled = true;
   void run(async () => {
     const started = epoch;
-    const form = new FormData(e.currentTarget as HTMLFormElement);
-    await api("profile", Object.fromEntries(form));
-    if (started === epoch) await account();
+    try {
+      const { data: { session } } = await client!.auth.getSession();
+      if (!session) {
+        const { error: sessionError } = await client!.auth.signInAnonymously();
+        if (sessionError) {
+          throw new Error(
+            "We couldn’t start your private session. Please try again shortly.",
+          );
+        }
+      }
+      if (started !== epoch) return;
+      await api("profile", fields);
+      if (started === epoch) await account();
+    } finally {
+      button.disabled = false;
+    }
   });
 };
 $<HTMLFormElement>("upload").onsubmit = (e) => {
@@ -312,8 +322,9 @@ $<HTMLFormElement>("upload").onsubmit = (e) => {
 for (const id of ["delete", "cancel"]) {
   $(id).onclick = () =>
     void run(async () => {
-      if (!active || !confirm("Delete this statement and its transactions?"))
+      if (!active || !confirm("Delete this statement and its transactions?")) {
         return;
+      }
       await api("delete", { id: active.id });
       clearReview();
       await account();
@@ -386,7 +397,7 @@ for (const format of ["excel", "xero"]) {
           const { default: JSZip } = await import("jszip");
           const zip = new JSZip();
           result.files.forEach((file: string, i: number) =>
-            zip.file(`xero-statement-${i + 1}.csv`, file),
+            zip.file(`xero-statement-${i + 1}.csv`, file)
           );
           const blob = await zip.generateAsync({ type: "blob" });
           if (started !== epoch || view !== navigation) return;
@@ -438,7 +449,8 @@ for (const format of ["excel", "xero"]) {
         if (started !== epoch || view !== navigation) return;
         download(
           new Blob([new Uint8Array(bytes)], {
-            type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            type:
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
           }),
           "statement-review.xlsx",
         );
@@ -481,27 +493,15 @@ void run(async () => {
       "The converter is not available yet. Please check back soon.";
     return;
   }
-  // Both providers must be configured before displaying either sign-in action.
-  const authUrl = import.meta.env.VITE_SUPABASE_URL;
-  const authKey =
-    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-    import.meta.env.VITE_SUPABASE_ANON_KEY;
-  const response = await fetch(`${authUrl}/auth/v1/settings`, {
-    headers: { apikey: authKey },
-  });
-  const settings = await response.json();
-  if (!response.ok || !settings.external?.google || !settings.external?.apple) {
-    $("availability").textContent =
-      "Sign-in is being prepared. Please check back soon.";
+  $("banks").textContent = `Available for ${
+    cap.banks.join(", ")
+  }. English GBP current accounts.`;
+  const { data: { session } } = await client!.auth.getSession();
+  if (session) {
+    $("availability").hidden = true;
+    await account();
     return;
   }
   $("availability").hidden = true;
-  $("banks").textContent = `Validated banks: ${cap.banks.join(
-    ", ",
-  )}. English GBP current accounts.`;
-  const {
-    data: { session },
-  } = await client!.auth.getSession();
-  if (session) await account();
-  else stage("signin");
+  stage("profile");
 });

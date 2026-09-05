@@ -6,6 +6,7 @@ import {
   readLimited,
   removeObject,
   user,
+  wakeWorker,
 } from '../_shared/runtime.ts';
 import { validatePdf } from '../_shared/extraction.ts';
 import { API_VERSION, assertStatement, checkStatement, xeroCsv } from '../_shared/statement.ts';
@@ -78,6 +79,7 @@ Deno.serve(async (req) => {
         if (error) throw new AppError('UPLOAD_FAILED');
         const result = await command('finalize', actor.id, jid, { pages, hash });
         if (result.reused) await removeObject(job.object_path, jid);
+        else wakeWorker();
         return json(result);
       } catch (error) {
         await command('fail', actor.id, jid, {
@@ -94,17 +96,20 @@ Deno.serve(async (req) => {
       return json(await command(action, actor.id));
     }
     if (action === 'profile') {
-      for (const k of ['name', 'practice', 'role']) {
+      for (const k of ['name', 'practice', 'email']) {
         if (
           typeof body[k] !== 'string' || !body[k].trim() ||
-          body[k].length > ({ name: 120, practice: 180, role: 80 }[k] ?? 80)
+          body[k].length > ({ name: 120, practice: 180, email: 254 }[k] ?? 80)
         ) throw new AppError('PROFILE_REQUIRED');
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email.trim())) {
+        throw new AppError('PROFILE_REQUIRED');
       }
       return json(
         await command('profile', actor.id, null, {
           name: body.name.trim(),
           practice: body.practice.trim(),
-          role: body.role.trim(),
+          email: body.email.trim().toLowerCase(),
         }),
       );
     }

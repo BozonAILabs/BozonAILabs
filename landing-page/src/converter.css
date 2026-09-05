@@ -308,7 +308,7 @@ iframe:focus-visible {
     padding: 24px;
   }
   .review-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .review-tabs {
     display: flex;
@@ -342,7 +342,7 @@ iframe:focus-visible {
   }
   .tool-intro,
   .tool-notes {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 32px;
   }
   .tool-intro h1 {
@@ -373,3 +373,7 @@ iframe:focus-visible {
 .site-header nav > a:last-of-type {
   display: inline-block;
 }
+
+/* Grid children must shrink so the transaction table scrolls inside its panel. */
+.tool-intro > *,
+.review-grid > * { min-width: 0; }
