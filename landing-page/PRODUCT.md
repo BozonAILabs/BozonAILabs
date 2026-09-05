@@ -8,47 +8,32 @@ web
 
 ## Users
 
-The primary audience is decision-makers at small and medium-sized businesses who are looking for a partner to design and deliver a software solution. They arrive wanting confidence in the quality, pace, and commercial fit of the team before making contact.
+Owners and partners of UK accountancy practices who want to reduce manual work in serving clients. Bozon is based in London. Europe is a future market, not the focus of this homepage.
 
 ## Product Purpose
 
-The Bozon AI Labs website presents the company as a software services partner and converts qualified visitors into contact enquiries. Its existing products demonstrate that the team can design and ship real software.
+Convert interested accountants into a 20-minute workflow review through direct email contact.
 
 ## Positioning
 
-Bozon AI Labs commits to high-standard software, fast delivery, and pricing appropriate for growing businesses.
-The hero frames these commitments as “A new standard for software delivery.” The scroll narrative then defines that standard through quality, speed, and price.
-
-## Operating Context
-
-Bozon may identify market gaps and build pilots as part of its internal client-acquisition process. That workflow is not part of the public website narrative. Public copy speaks from the prospective client's point of view and focuses on the software outcome they receive.
+Two founders work hands-on with one practice at a time. They map a workflow, improve it inside the practice's existing tools, and measure the result against an agreed baseline.
 
 ## Capabilities and Constraints
 
-- The detailed service catalogue is deliberately open and must not be invented.
-- The existing product names, descriptions, logos, links, and legal routes remain factual product evidence.
-- Contact actions open an email to info@bozonailabs.com directly; the legacy contact route remains available for old links.
-- The landing page must work with keyboard navigation, reduced-motion preferences, and without WebGL.
-
-## Brand Commitments
-
-- Preserve the Bozon AI Labs name, logo, and green identity.
-- Use forest-black, deep green, logo green, bright green, and off-white as the visual system.
-- Keep the voice direct, concise, and buyer-facing.
-- Do not use em dashes in public marketing copy.
+The engagement is £5,000 fixed: £1,000 to start and £4,000 once the workflow is live and agreed results are proven. Scope, measurement criteria, third-party costs and ongoing support must be agreed with the practice. Do not invent a minimum savings guarantee.
 
 ## Evidence on Hand
 
-The website can show the two public Bozon products and their current descriptions and destinations. No client testimonials, delivery metrics, pricing figures, customer logos, or performance benchmarks have been supplied and none may be fabricated.
+Bozon has no clients or measured client results yet. The founders have experience at NatWest, Goldman Sachs and J.P. Morgan, per the user. Their individual roles, names, photographs and employment dates have not been supplied for the site. These companies must never be presented as Bozon customers. Product links to 12thPass and Munsi are excluded from this homepage at the user’s request.
+
+## Brand Commitments
+
+Preserve Bozon AI Labs name, logo and green identity. Use Harvey's Mobbin website as the explicit visual reference. Keep marketing copy concise, show the work visually and avoid em dashes. Public copy uses “team” rather than “founders”. Show the logo symbol alone in the header and footer, without the adjacent text wordmark. The experience strip retains “Previous experience across” and employer names without a separate founders headline.
 
 ## Product Principles
 
-- Make the software-services offer understandable in the first viewport.
-- Present quality, speed, and price as the three public commitments.
-- Use shipped products as evidence rather than inventing claims.
-- Keep contacting Bozon obvious and frictionless.
-- Treat motion as one authored narrative, never as decoration applied everywhere.
+One clear action: request a workflow review. Illustrative workflow examples cover records preparation, missing-document collection and client onboarding. A visitor-controlled capacity calculator shows a scenario, not a prediction or a performance claim. Human review remains visible.
 
 ## Accessibility & Inclusion
 
-The public site must meet WCAG AA contrast expectations, preserve semantic content and links, expose visible keyboard focus, and provide a composed non-animated experience when reduced motion is requested.
+Readable static HTML, semantic sections, labelled range controls, keyboard-operated tabs, visible focus, responsive layout and reduced-motion support.

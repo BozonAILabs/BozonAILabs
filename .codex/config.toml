@@ -1,3 +1,6 @@
+[mcp_servers.mobbin]
+url = "https://api.mobbin.com/mcp"
+
 [mcp_servers.dataforseo]
 command = "npx"
 args = ["-y", "dataforseo-mcp-server"]

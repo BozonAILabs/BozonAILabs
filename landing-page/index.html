@@ -1,17 +1,631 @@
 <!doctype html>
-<html lang="en" style="background:#06110d">
+<html lang="en-GB">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/bozon-logo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="High-standard software, delivered fast and priced for growing businesses." />
-    <title>Bozon AI Labs</title>
+    <meta name="theme-color" content="#fafbf8" />
+    <title>Accountancy Workflow Automation | Bozon AI Labs</title>
+    <meta
+      name="description"
+      content="More capacity. Same team. Bozon AI Labs helps UK accountancy practices improve client workflows. Hands-on team, one practice at a time, with results measured before final payment."
+    />
+    <meta
+      property="og:title"
+      content="More capacity. Same team. | Bozon AI Labs"
+    />
+    <meta
+      property="og:description"
+      content="Hands-on workflow automation for accountancy practices. Built around your team. Proven in your practice."
+    />
+    <meta property="og:type" content="website" />
+    <link rel="icon" type="image/png" href="/bozon-logo.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400&display=swap" rel="stylesheet" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@400;450;500;550;600&family=Libre+Caslon+Display&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
-    <div id="app"></div>
+    <!-- THESIS: Direct founder involvement makes a measurable improvement to an accountant's working day.
+    OWN-WORLD: Harvey-referenced editorial serif, near-white canvas, forest-green work surfaces, short copy.
+    STORY: Recognise the workload, see the improvement, model capacity, understand the terms, request a review.
+    FIRST VIEWPORT: Split headline and CTA above a generous, explicitly illustrative records-to-review application.
+    FORM: User-selected Harvey reference; six sections with founder experience, workflow tabs and a capacity calculator. -->
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header wrap">
+      <a class="brand" href="/" aria-label="Bozon AI Labs home"
+        ><img src="/bozon-logo.png" alt="" width="32" height="32"
+      /></a>
+      <nav aria-label="Main navigation">
+        <a href="#workflows">What we improve</a
+        ><a href="#approach">How we work</a
+        ><a class="button button-small" href="#contact"
+          >Let’s talk <span aria-hidden="true">↗</span></a
+        >
+      </nav>
+    </header>
+    <main id="main">
+      <section class="hero wrap" aria-labelledby="hero-title">
+        <p class="eyebrow">
+          <span class="status-dot"></span> For UK accountancy practices
+        </p>
+        <div class="hero-top">
+          <h1 id="hero-title">More capacity.<br /><span>Same team.</span></h1>
+          <div class="hero-intro">
+            <p>
+              Less manual work around every client.<br />We build better
+              workflows inside the tools you already use.
+            </p>
+            <a class="button" href="#contact"
+              >Book a workflow review <span aria-hidden="true">↗</span></a
+            ><span class="micro">Hands-on team. One practice at a time.</span>
+          </div>
+        </div>
+        <div
+          class="hero-demo"
+          aria-label="Illustrative records preparation workflow"
+        >
+          <div class="demo-toolbar">
+            <span
+              ><span class="small-mark" aria-hidden="true">✳</span> A clearer
+              path from records to review</span
+            ><span class="demo-label">Illustrative example</span>
+          </div>
+          <div class="demo-workspace">
+            <aside class="demo-sidebar" aria-hidden="true">
+              <span class="workspace-brand">Riverside Studio</span
+              ><span class="workspace-caption">Client workspace</span>
+              <div class="side-item active"><span>▤</span> Records</div>
+              <div class="side-item"><span>◷</span> Requests</div>
+              <div class="side-item"><span>☑</span> Review</div>
+              <div class="sidebar-bottom">
+                <span class="avatar">RS</span
+                ><span
+                  >September pack<br /><small>Monthly bookkeeping</small></span
+                >
+              </div>
+            </aside>
+            <div class="workspace-body">
+              <div class="workspace-heading">
+                <div>
+                  <span class="workspace-caption">RECORDS PREPARATION</span>
+                  <h2>Ready for your expertise.</h2>
+                </div>
+                <span class="review-tag"
+                  ><span class="status-dot"></span> Human review</span
+                >
+              </div>
+              <div class="pipeline">
+                <div><span class="step-dot done">✓</span> Collect</div>
+                <span class="pipeline-line"></span>
+                <div><span class="step-dot done">✓</span> Prepare</div>
+                <span class="pipeline-line"></span>
+                <div><span class="step-dot">3</span> Review</div>
+              </div>
+              <div class="records-grid">
+                <div class="source-files">
+                  <span class="mini-label">CLIENT RECORDS</span>
+                  <div class="file">
+                    <span class="file-icon">PDF</span
+                    ><span
+                      >Bank statement<small>September · 12 pages</small></span
+                    ><span class="file-tick">✓</span>
+                  </div>
+                  <div class="file">
+                    <span class="file-icon">PDF</span
+                    ><span
+                      >Purchase invoices<small
+                        >September · 8 documents</small
+                      ></span
+                    ><span class="file-tick">✓</span>
+                  </div>
+                  <div class="file">
+                    <span class="file-icon file-icon-sheet">XLS</span
+                    ><span
+                      >Expense records<small
+                        >September · 1 spreadsheet</small
+                      ></span
+                    ><span class="file-tick">✓</span>
+                  </div>
+                  <p class="files-note">Source documents stay attached.</p>
+                </div>
+                <div class="review-list">
+                  <div class="review-list-title">
+                    <span class="mini-label">PREPARED FOR REVIEW</span
+                    ><span class="tiny-check">✓ Organised</span>
+                  </div>
+                  <div class="transaction">
+                    <span
+                      ><b>Studio rent</b
+                      ><small>01 Sep · Bank statement</small></span
+                    ><span
+                      >£1,250.00 <i class="matched-dot" aria-label="Matched"></i
+                    ></span>
+                  </div>
+                  <div class="transaction">
+                    <span
+                      ><b>Software subscription</b
+                      ><small>03 Sep · Invoice attached</small></span
+                    ><span
+                      >£48.00 <i class="matched-dot" aria-label="Matched"></i
+                    ></span>
+                  </div>
+                  <div class="transaction">
+                    <span
+                      ><b>Equipment purchase</b
+                      ><small>05 Sep · Receipt missing</small></span
+                    ><span
+                      >£320.00
+                      <i class="exception-dot" aria-label="Needs review"></i
+                    ></span>
+                  </div>
+                  <div class="review-note">
+                    <span aria-hidden="true">↳</span> Missing receipt flagged
+                    for your team.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="demo-footer">
+            <span
+              >Scattered records. Structured work. Your team in control.</span
+            ><a href="#workflows"
+              >Explore the workflows <span aria-hidden="true">↓</span></a
+            >
+          </div>
+        </div>
+      </section>
+
+      <section class="experience wrap" aria-label="Previous team experience">
+        <div>
+          <span>Previous experience across</span>
+        </div>
+        <div
+          class="employers"
+          aria-label="Our team has experience at NatWest, Goldman Sachs and J.P. Morgan"
+        >
+          <span class="employer natwest">NatWest</span
+          ><span class="employer goldman">Goldman<br />Sachs</span
+          ><span class="employer jpmorgan">J.P. Morgan</span>
+        </div>
+      </section>
+
+      <section
+        class="workflows wrap section-space"
+        id="workflows"
+        aria-labelledby="workflow-title"
+      >
+        <div class="section-top">
+          <h2 id="workflow-title">A smoother day<br />starts here.</h2>
+          <p>
+            Start with the work that slows you down.<br />We build around the
+            way your practice runs.
+          </p>
+        </div>
+        <div
+          class="workflow-tabs"
+          role="tablist"
+          aria-label="Workflow examples"
+        >
+          <button
+            id="tab-records"
+            role="tab"
+            aria-selected="true"
+            aria-controls="panel-records"
+            data-workflow="records"
+          >
+            Records &amp; data entry <span aria-hidden="true">↗</span></button
+          ><button
+            id="tab-documents"
+            role="tab"
+            aria-selected="false"
+            aria-controls="panel-documents"
+            tabindex="-1"
+            data-workflow="documents"
+          >
+            Missing documents <span aria-hidden="true">↗</span></button
+          ><button
+            id="tab-onboarding"
+            role="tab"
+            aria-selected="false"
+            aria-controls="panel-onboarding"
+            tabindex="-1"
+            data-workflow="onboarding"
+          >
+            Client onboarding <span aria-hidden="true">↗</span>
+          </button>
+        </div>
+        <div
+          class="workflow-panel"
+          id="panel-records"
+          role="tabpanel"
+          aria-labelledby="tab-records"
+          tabindex="0"
+        >
+          <div class="workflow-copy">
+            <span class="section-label">Records &amp; data entry</span>
+            <h3>Less rekeying.<br />More reviewing.</h3>
+            <p>
+              Turn statements and invoices into organised records, with
+              exceptions brought to your team.
+            </p>
+            <div class="before-after">
+              <span>Today</span>
+              <p>Open. Copy. Check. Repeat.</p>
+              <span>With a better workflow</span>
+              <p>Review what needs your attention.</p>
+            </div>
+            <a class="text-link" href="#contact"
+              >Talk about your workflow <span aria-hidden="true">↗</span></a
+            >
+          </div>
+          <div class="workflow-visual">
+            <div class="paper">
+              <div class="paper-top">
+                <span class="paper-icon" aria-hidden="true">▤</span
+                ><span>September records<small>Prepared work pack</small></span
+                ><span class="paper-status">For review</span>
+              </div>
+              <div class="paper-summary">
+                <span>Source records</span
+                ><strong>Connected to every entry</strong>
+              </div>
+              <div class="check-row">
+                <span class="check">✓</span> Data extracted into consistent
+                fields
+              </div>
+              <div class="check-row">
+                <span class="check">✓</span> Supporting documents linked
+              </div>
+              <div class="check-row">
+                <span class="check">✓</span> Ready for your team’s checks
+              </div>
+              <div class="paper-exception">
+                <span class="exception-dot"></span
+                ><span
+                  >Equipment purchase<small
+                    >Receipt needed · £320.00</small
+                  ></span
+                ><span>Review →</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div
+          class="workflow-panel"
+          id="panel-documents"
+          role="tabpanel"
+          aria-labelledby="tab-documents"
+          tabindex="0"
+          hidden
+        >
+          <div class="workflow-copy">
+            <span class="section-label">Missing documents</span>
+            <h3>Know what’s missing.<br />Keep work moving.</h3>
+            <p>
+              Bring received records and outstanding requests together, so the
+              next client chase is clear.
+            </p>
+            <div class="before-after">
+              <span>Today</span>
+              <p>Search inboxes. Update lists. Chase again.</p>
+              <span>With a better workflow</span>
+              <p>One clear view of what’s outstanding.</p>
+            </div>
+            <a class="text-link" href="#contact"
+              >Talk about your workflow <span aria-hidden="true">↗</span></a
+            >
+          </div>
+          <div class="workflow-visual">
+            <div class="paper">
+              <div class="paper-top">
+                <span class="paper-icon" aria-hidden="true">↗</span
+                ><span
+                  >Riverside Studio<small
+                    >September document request</small
+                  ></span
+                ><span class="paper-status">Draft</span>
+              </div>
+              <div class="check-row">
+                <span class="check">✓</span> Bank statement received
+              </div>
+              <div class="check-row">
+                <span class="check">✓</span> Purchase invoices received
+              </div>
+              <div class="paper-exception">
+                <span class="exception-dot"></span
+                ><span>Equipment receipt<small>Still outstanding</small></span>
+              </div>
+              <div class="draft-message">
+                <span class="mini-label">NEXT REQUEST · FOR APPROVAL</span>
+                <p>
+                  Hi Alex, thanks for the September records. Could you send the
+                  receipt for the £320 equipment purchase on 5 September?
+                </p>
+              </div>
+              <div class="paper-bottom">
+                <span class="status-dot"></span> Your team reviews before
+                sending
+              </div>
+            </div>
+          </div>
+        </div>
+        <div
+          class="workflow-panel"
+          id="panel-onboarding"
+          role="tabpanel"
+          aria-labelledby="tab-onboarding"
+          tabindex="0"
+          hidden
+        >
+          <div class="workflow-copy">
+            <span class="section-label">Client onboarding</span>
+            <h3>A clear next step.<br />For every new client.</h3>
+            <p>
+              Connect the requests, documents and handovers between a new
+              enquiry and a client ready to serve.
+            </p>
+            <div class="before-after">
+              <span>Today</span>
+              <p>Repeat emails. Re-enter details. Check progress.</p>
+              <span>With a better workflow</span>
+              <p>Connected steps. Visible ownership.</p>
+            </div>
+            <a class="text-link" href="#contact"
+              >Talk about your workflow <span aria-hidden="true">↗</span></a
+            >
+          </div>
+          <div class="workflow-visual">
+            <div class="paper">
+              <div class="paper-top">
+                <span class="paper-icon" aria-hidden="true">☑</span
+                ><span
+                  >New client onboarding<small>Riverside Studio</small></span
+                ><span class="paper-status">In progress</span>
+              </div>
+              <div class="onboard-row">
+                <span class="check">✓</span
+                ><span>Engagement letter<small>Signed and filed</small></span
+                ><span>Complete</span>
+              </div>
+              <div class="onboard-row">
+                <span class="check">✓</span
+                ><span>Client details<small>Recorded once</small></span
+                ><span>Complete</span>
+              </div>
+              <div class="onboard-row">
+                <span class="step-dot">3</span
+                ><span
+                  >Identity documents<small
+                    >Ready for the team’s checks</small
+                  ></span
+                ><span class="amber-text">Review</span>
+              </div>
+              <div class="onboard-row">
+                <span class="step-dot pending">4</span
+                ><span
+                  >Team handover<small>Follows completed checks</small></span
+                ><span>Next</span>
+              </div>
+              <div class="paper-bottom">
+                A visible owner and next step at each stage.
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section
+        class="capacity section-space"
+        id="capacity"
+        aria-labelledby="capacity-title"
+      >
+        <div class="wrap capacity-layout">
+          <div class="capacity-intro">
+            <span class="section-label">The capacity you could recover</span>
+            <h2 id="capacity-title">Small improvements.<br />Room to grow.</h2>
+            <p>
+              See what a little less admin could mean across your client base.
+            </p>
+            <span class="scenario-label"
+              >Illustrative scenario, not a forecast.</span
+            >
+          </div>
+          <div class="calculator">
+            <div class="slider-field">
+              <div>
+                <label for="clients">Clients in this workflow</label
+                ><output id="clients-output" for="clients">100</output>
+              </div>
+              <input
+                id="clients"
+                type="range"
+                min="10"
+                max="500"
+                step="10"
+                value="100"
+              />
+              <div class="range-bounds" aria-hidden="true">
+                <span>10 clients</span><span>500 clients</span>
+              </div>
+            </div>
+            <div class="slider-field">
+              <div>
+                <label for="minutes">Minutes saved per client / month</label
+                ><output id="minutes-output" for="minutes">15</output>
+              </div>
+              <input
+                id="minutes"
+                type="range"
+                min="0"
+                max="60"
+                step="1"
+                value="15"
+              />
+              <div class="range-bounds" aria-hidden="true">
+                <span>0 minutes</span><span>60 minutes</span>
+              </div>
+            </div>
+            <div class="capacity-result" aria-live="polite" aria-atomic="true">
+              <div>
+                <output id="hours-output" for="clients minutes">25</output
+                ><span>hours back<br />each month</span>
+              </div>
+              <p id="calculation">100 clients × 15 minutes ÷ 60</p>
+            </div>
+            <p class="calculator-note">
+              Use your estimate of time saved after review and corrections. We
+              agree a baseline and measure actual results with you.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section
+        class="engagement wrap section-space"
+        id="approach"
+        aria-labelledby="approach-title"
+      >
+        <div class="engagement-top">
+          <div>
+            <span class="section-label"
+              >Personally built. Measured with you.</span
+            >
+            <h2 id="approach-title">Your practice.<br />Our full attention.</h2>
+          </div>
+          <p>
+            You work directly with our team.<br />We take on one practice at a
+            time.
+          </p>
+        </div>
+        <ol class="process">
+          <li>
+            <span class="process-number">01</span>
+            <h3>Map the work.</h3>
+            <p>
+              Find the bottleneck. Agree the scope, baseline and what success
+              looks like.
+            </p>
+          </li>
+          <li>
+            <span class="process-number">02</span>
+            <h3>Build it together.</h3>
+            <p>
+              Improve the workflow inside your existing tools, with your team
+              involved.
+            </p>
+          </li>
+          <li>
+            <span class="process-number">03</span>
+            <h3>Prove the change.</h3>
+            <p>
+              Run it in your practice. Measure the result before the final
+              payment.
+            </p>
+          </li>
+        </ol>
+        <div class="price-band">
+          <div class="price">
+            <span>One fixed engagement</span><strong>£5,000</strong>
+          </div>
+          <div class="payment-terms">
+            <p><strong>£1,000</strong> to start.</p>
+            <p>
+              <strong>£4,000</strong> once it’s live and the agreed results are
+              proven.
+            </p>
+          </div>
+          <a class="button button-light" href="#contact"
+            >Let’s find your first workflow <span aria-hidden="true">↗</span></a
+          >
+        </div>
+      </section>
+
+      <section
+        class="contact wrap section-space"
+        id="contact"
+        aria-labelledby="contact-title"
+      >
+        <div class="contact-main">
+          <span class="section-label"
+            ><span class="status-dot"></span> London-based. Working with UK
+            practices.</span
+          >
+          <h2 id="contact-title">What’s slowing<br />your team down?</h2>
+          <p>Let’s spend 20 minutes finding out.</p>
+          <a
+            class="button"
+            id="contact-email"
+            href="mailto:info@bozonailabs.com?subject=Let%E2%80%99s%20review%20our%20practice%20workflow&amp;body=Hi%20Bozon%2C%0A%0AI%E2%80%99d%20like%20to%20arrange%20a%2020-minute%20workflow%20review.%0A%0APractice%3A%20%0AThe%20workflow%20slowing%20us%20down%3A%20%0A%0ABest%20times%20to%20talk%3A%20"
+            >Book a workflow review <span aria-hidden="true">↗</span></a
+          ><span class="micro">Arrange a time by email.</span>
+        </div>
+        <div class="faq">
+          <h3>A few things you might ask.</h3>
+          <details>
+            <summary>
+              Will we need to change our software?<span aria-hidden="true"
+                >+</span
+              >
+            </summary>
+            <p>
+              We start with the tools you already use. Any additional software
+              or integration is discussed and agreed before we build.
+            </p>
+          </details>
+          <details>
+            <summary>
+              How are the results proven?<span aria-hidden="true">+</span>
+            </summary>
+            <p>
+              We agree the workflow, baseline and success criteria with you
+              before the build. We then measure the live workflow, including
+              review and correction time, against that baseline before the
+              £4,000 balance is due.
+            </p>
+          </details>
+          <details>
+            <summary>
+              How do you handle client information?<span aria-hidden="true"
+                >+</span
+              >
+            </summary>
+            <p>
+              We agree data access and handling with you before connecting any
+              systems. We can begin mapping with redacted examples. Your team
+              retains review of client work.
+            </p>
+          </details>
+          <details>
+            <summary>
+              What happens after it goes live?<span aria-hidden="true">+</span>
+            </summary>
+            <p>
+              We agree handover, ongoing support and any third-party running
+              costs before the engagement starts, so you know what happens next.
+            </p>
+          </details>
+        </div>
+      </section>
+    </main>
+    <footer class="footer wrap">
+      <div class="footer-top">
+        <a class="brand" href="/" aria-label="Bozon AI Labs home"
+          ><img src="/bozon-logo.png" alt="" width="28" height="28" /></a
+        ><a href="mailto:info@bozonailabs.com"
+          >info@bozonailabs.com <span aria-hidden="true">↗</span></a
+        >
+      </div>
+      <div class="footer-bottom">
+        <span>© 2026 Bozon AI Labs</span>
+        <div>
+          <a href="/privacy.html">Privacy</a><a href="/terms.html">Terms</a>
+        </div>
+      </div>
+    </footer>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
