@@ -35,6 +35,7 @@ const call = async (
       : await response.json(),
   };
 };
+const { data: initialSettings } = await admin.from('converter_settings').select('enabled').single();
 try {
   await admin.from('converter_settings').update({ enabled: true }).eq(
     'id',
@@ -145,7 +146,7 @@ try {
     job_id: jid,
   });
   assert(directHelp);
-  // A client cannot remove immutable extraction warnings to bypass Xero checks.
+  // Downloads retain immutable extraction metadata but no longer gate CSV on it.
   const partial = {
     ...edited,
     bank: 'Unfamiliar Bank',
@@ -160,14 +161,35 @@ try {
     false,
   );
   assertEquals(
-    (await call(0, 'export', { id: jid, revision: 2, format: 'xero', acknowledged: true })).data
-      .error,
-    'REVIEW_REQUIRED',
+    (await call(0, 'export', { id: jid, revision: 2, format: 'xero' })).status,
+    200,
   );
   assertEquals(
     (await call(0, 'export', { id: jid, revision: 2, format: 'excel' })).data.statement.extraction
       .complete,
     false,
+  );
+
+  const visible = structuredClone(edited);
+  visible.transactions[0].amount = null;
+  visible.transactions[0].date = '';
+  visible.transactions[0].description = 'Visible unsaved edit';
+  const snapshot = await call(0, 'export', {
+    id: jid,
+    revision: 2,
+    format: 'xero',
+    statement: visible,
+  });
+  assertEquals(snapshot.status, 200);
+  assert(snapshot.data.files[0].includes('"","","Visible unsaved edit"'));
+  assertEquals(snapshot.data.statement.extraction.complete, false);
+  assertEquals(
+    (await call(0, 'get', { id: jid })).data.content.corrected.transactions[0].description,
+    edited.transactions[0].description,
+  );
+  assertEquals(
+    (await call(1, 'export', { id: jid, revision: 2, format: 'xero', statement: visible })).status,
+    404,
   );
 
   assertEquals((await call(0, 'delete', { id: jid })).status, 200);
@@ -179,6 +201,67 @@ try {
   ).eq('job_id', jid).single();
   assertEquals(revoked, { share_statement: false, statement_access_until: null });
   assertEquals((await call(0, 'help', { id: jid, share_statement: true })).status, 400);
+  // Checkpoint rows are downloadable while processing and after a later chunk fails.
+  const multi = await call(0, 'create');
+  const multiId = multi.data.id;
+  const multiPdf = await PDFDocument.create();
+  for (let i = 0; i < 8; i++) multiPdf.addPage();
+  assertEquals((await call(0, 'upload', {}, await multiPdf.save(), multiId)).status, 200);
+  assertEquals(
+    (await call(0, 'export', { id: multiId, revision: 0, format: 'xero' })).data.error,
+    'NO_TRANSACTIONS',
+  );
+  const { data: firstLease } = await admin.rpc('converter_claim');
+  assertEquals(firstLease.id, multiId);
+  const chunk = { statement, from: 0, through: 6, complete: true, supported: true };
+  const checkpoint = await admin.rpc('converter_checkpoint', {
+    jid: multiId,
+    token: firstLease.lease,
+    mid: firstLease.msg_id,
+    chunk,
+    final_result: null,
+  });
+  assertEquals(checkpoint.error, null);
+  const interim = await call(0, 'get', { id: multiId });
+  assertEquals(interim.data.state, 'queued');
+  assertEquals(interim.data.extracted_pages, 6);
+  assertEquals(interim.data.content.corrected.transactions.length, 1);
+  assertEquals((await call(1, 'get', { id: multiId })).status, 404);
+  for (const format of ['excel', 'xero']) {
+    const download = await call(0, 'export', {
+      id: multiId,
+      revision: 0,
+      extracted_pages: 6,
+      format,
+    });
+    assertEquals(download.status, 200);
+    assertEquals(download.data.in_progress, true);
+    assertEquals(download.data.incomplete, true);
+    assertEquals(
+      (await call(1, 'export', { id: multiId, revision: 0, extracted_pages: 6, format })).status,
+      404,
+    );
+  }
+  const { data: secondLease } = await admin.rpc('converter_claim');
+  assertEquals(secondLease.id, multiId);
+  const rejected = await admin.rpc('converter_reject', {
+    jid: multiId,
+    token: secondLease.lease,
+    mid: secondLease.msg_id,
+    reason: 'NO_TRANSACTIONS',
+  });
+  assertEquals(rejected.data, true);
+  const failedDownload = await call(0, 'export', { id: multiId, revision: 0, format: 'xero' });
+  assertEquals(failedDownload.status, 200);
+  assertEquals(failedDownload.data.in_progress, false);
+  assertEquals(failedDownload.data.incomplete, true);
+  await admin.from('conversions').update({ expires_at: new Date(Date.now() - 1000).toISOString() })
+    .eq('id', multiId);
+  assertEquals(
+    (await call(0, 'export', { id: multiId, revision: 0, format: 'xero' })).data.error,
+    'EXPIRED',
+  );
+  await call(0, 'delete', { id: multiId });
   // Terminal document rejection respects leases and releases quota exactly once.
   const failure = await call(1, 'create');
   await call(1, 'upload', {}, bytes, failure.data.id);
@@ -237,7 +320,7 @@ try {
     if (jobs?.length) await admin.storage.from('statements').remove(jobs.map((j) => j.object_path));
     await admin.auth.admin.deleteUser(u.id);
   }
-  await admin.from('converter_settings').update({ enabled: false }).eq(
+  await admin.from('converter_settings').update({ enabled: initialSettings?.enabled ?? true }).eq(
     'id',
     true,
   );

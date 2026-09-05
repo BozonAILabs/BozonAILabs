@@ -16,21 +16,21 @@ Use the Bozon stack on API port 56321, DB port 56322 and Vite port 5174. This ma
 
 ## Verification
 
-- `./scripts/check.sh`: engine/type checks, build, nine mocked browser regression tests and dependency audit.
+- `./scripts/check.sh`: engine/type checks, build, thirteen mocked browser regression tests and dependency audit.
 - `cat supabase/tests/converter.sql | docker exec -i supabase_db_BozonAILabs psql -U postgres -d postgres`: DB access, lifecycle, quota and concurrency invariants.
-- `python3 scripts/test-local-api.py`: real local API/Storage/Auth tests with manually injected extraction checkpoints. Set `LOCAL_MANUAL_WORKER=true` for this harness, then remove it and restart functions afterward. Production ignores this localhost-only flag. The harness restores disabled settings afterward; restore `enabled=true` before manual use.
+- `python3 scripts/test-local-api.py`: real local API/Storage/Auth tests with manually injected extraction checkpoints. Set `LOCAL_MANUAL_WORKER=true` for this harness, then remove it and restart functions afterward. Production ignores this localhost-only flag. The harness restores the previous enabled setting afterward.
 - `deno run --allow-write=.local scripts/create-converter-fixture.ts --boundary --unknown-bank`, then `node landing-page/scripts/live-converter.mjs`: opt-in billed live test with actual Mistral, Auth, uploads, Storage, queue and Edge workers. No API responses or successful checkpoints are mocked. It verifies an eight-page/two-chunk PDF, exact transactions, a saved correction, actual workbook/CSV contents, mobile layout and deletion. Synthetic fixtures and output files stay in ignored `.local/`.
 - `deno run --allow-env --allow-net=api.mistral.ai scripts/smoke-ocr.ts --boundary`: isolated provider diagnostic, not a substitute for the full flow.
 
-The eight-page browser-to-download test verifies continuation across pages 6/7 exactly once. This establishes pipeline behavior; it does not certify every real bank format. The live test starts at the contact form in a fresh browser and creates a real anonymous session; it does not inject credentials or mock authentication.
+The eight-page browser-to-download test checks continuation across pages 6/7 exactly once. Passing a synthetic fixture does not certify every real bank format. The live test starts at the contact form in a fresh browser and creates a real anonymous session; it does not inject credentials or mock authentication.
 
 ## Contract and lifecycle
 
 `supabase/functions/_shared/statement.ts` owns the versioned integer-pence statement format and checks. `shared/statement.ts` re-exports it to browser/tests. Statement summaries and transaction arrays are the inputs for future completeness/comparison tools. Those tools are not built here.
 
-`converter-api` actions: capabilities; account; profile; followup; create; upload (PDF body with id query); get; source; edit (id, revision, statement); export (id, revision, format, acknowledged); delete. User identity is obtained from Auth, never request body. All JSON responses and PDFs are no-store. Browser Storage access is denied. Edits preserve account metadata and original source-page references; original extraction remains separate from corrections.
+`converter-api` actions: capabilities; account; profile; followup; create; upload (PDF body with id query); get; source; edit (id, revision, statement); export (id, format, optional visible statement and extracted_pages; revision for saved-only exports); delete. User identity is obtained from Auth, never request body. All JSON responses and PDFs are no-store. Browser Storage access is denied. Edits preserve account metadata and original source-page references; original extraction remains separate from corrections.
 
-Create claims the user's single active slot. Upload is claimed once, bounded and parsed server-side; finalise hashes the file, reuses an unexpired result where possible, reserves pages under a user advisory lock and enqueues atomically. An unexpired duplicate requires at least one remaining page to initiate upload, but does not charge pages again. Existing results remain downloadable at zero allowance. Finalised uploads wake the worker immediately with `EdgeRuntime.waitUntil`; each successful partial checkpoint wakes the next chunk. Minute Cron is the durable recovery path, not the primary start mechanism. Workers download private PDF bytes and send an inline document to Mistral, so no external provider must reach Docker-local URLs. Each worker request consumes one queue chunk, with 180-second visibility and three attempts per chunk. Six owned pages with preceding and following context keep requests at most eight pages and allow wrapped descriptions to cross page boundaries. Original page references determine ownership; no transaction is silently deduplicated. Readable rows from incomplete chunks are checkpointed with immutable extraction-quality flags. Missing/uncertain pages remain visible even if balances match. Provider transport/malformed-response failures retry; incompatible account metadata, non-GBP/mixed ledgers, non-statements and zero usable rows fail without fabricating output.
+Create claims the user's single active slot. Upload is claimed once, bounded and parsed server-side; finalise hashes the file, reuses an unexpired result where possible, reserves pages under a user advisory lock and enqueues atomically. An unexpired duplicate requires at least one remaining page to initiate upload, but does not charge pages again. Existing results remain downloadable at zero allowance. Finalised uploads wake the worker immediately with `EdgeRuntime.waitUntil`; each successful partial checkpoint wakes the next chunk. Minute Cron is the durable recovery path, not the primary start mechanism. Workers download private PDF bytes and send an inline document to Mistral, so no external provider must reach Docker-local URLs. Each worker request consumes one queue chunk, with 180-second visibility and three attempts per chunk. Six owned pages with preceding and following context keep requests at most eight pages and allow wrapped descriptions to cross page boundaries. Original page references determine ownership; no transaction is silently deduplicated. Readable rows from incomplete chunks are checkpointed with immutable extraction-quality flags. Missing/uncertain pages contribute to a single incomplete-extraction notice; arithmetic diagnostics are not shown to visitors. Provider transport/malformed-response failures retry; incompatible account metadata, non-GBP/mixed ledgers, non-statements and zero usable rows fail without fabricating output.
 
 Checkpointing checks a lease token, job state and expiry under the same user lock. Completion charges once; failures/deletion release only unconsumed reservations. Queues contain job IDs only. No financial content goes in operational logs/events. Mistral raw annotations, normalised original and current corrections live in `conversion_content`, guarded by the parent expiry. The browser clears loaded content at expiry/sign-out; copies already downloaded cannot be revoked.
 
@@ -55,21 +55,26 @@ No bank list, bank credentials or per-bank parser is required. Bank names are de
 
 The canonical statement carries optional `extraction` metadata: completeness, unreadable page numbers and uncertain page numbers. The original remains immutable when transactions are edited. The three outcomes are:
 
-- Checks pass: review, Excel and Xero CSV (acknowledge absent balances where required).
-- Needs attention: readable/editable rows remain visible, with source/page warnings. Excel uses a partial filename and sheet plus a Checks warning when extraction is incomplete. Xero is blocked by unresolved issues; matching balances and acknowledgements cannot override incomplete source extraction.
-- Cannot extract: no finished spreadsheet. A specific explanation and help request are available; reserved pages are returned.
+- Complete extraction: editable rows, Excel and Xero CSV.
+- Incomplete extraction: bullet points identify missing dates, descriptions or amounts by row and source page, plus unreadable/uncertain pages when no more precise location is available. Unknown locations are stated explicitly. The bullets update as fields are edited; both downloads remain available. Missing amounts remain blank; rows are never silently dropped. Partial filenames and an Extraction sheet in Excel identify incomplete results. Balance, date-range and duplicate diagnostics do not block downloads or appear in the interface/workbook.
+- Processing or a later-chunk failure: completed checkpoint rows remain downloadable. Processing snapshots are labelled “Extraction still in progress”; the table is read-only until processing ends. No rows means no download.
 
-Malformed/transport responses retry within the existing bounded queue. Terminal rejections use `converter_reject`, which checks the active lease before changing state/releasing quota. Failed PDFs stay private until the original expiry/deletion so users can choose to share them for help. This does not extend the 24-hour retention period.
+Downloads include the visible transaction edits without requiring a save and do not overwrite stored corrections. Save corrections remains available for completed jobs and preserves revision checks. A CSV with missing or invalid values may still need editing before Xero can import it. The incomplete indicator is independent of accounting consistency checks. Source extraction metadata remains immutable.
+
+The API authorizes `get` before reading checkpoint content and checks expiry/deletion again afterwards. `extracted_pages` pins a download to the checkpoint rows visible when clicked, even if extraction advances. Exports preserve server-owned account identity, source pages and original extraction metadata; only transaction date, description and amount can be supplied as visible edits. Interim downloads do not change processing state, quota or saved corrections.
+
+
+Malformed/transport responses retry within the existing bounded queue. Terminal rejections use `converter_reject`, which checks the active lease before changing state/releasing quota. Failed PDFs stay private until the original expiry/deletion so users can still access their available results. This does not extend the 24-hour retention period.
 
 Test real, consented/redacted layouts against an independently prepared expected ledger before claiming reliable coverage. Synthetic fixtures verify the pipeline, not every bank's actual formats. Include scans, wrapped descriptions, repeated rows, missing pages and negative balances.
 
 Additional live scenarios:
 
-- Generate `--unknown-bank --partial`, then run `CONVERTER_LIVE_SCENARIO=partial node landing-page/scripts/live-converter.mjs` to verify unreadable amounts, partial workbook, blocked Xero, help consent and deletion revocation.
+- Generate `--unknown-bank --partial`, then run `CONVERTER_LIVE_SCENARIO=partial node landing-page/scripts/live-converter.mjs` to verify unreadable amounts, partial Excel/CSV downloads, workflow contact and deletion.
 - To test a PDF with no text layer, generate it with `deno run --allow-write=.local --allow-read=.local --allow-run=pdftoppm scripts/create-converter-fixture.ts --unknown-bank --scanned`, then run the normal live harness. This optional test requires Poppler.
-- Generate `--unknown-bank --non-gbp`, then run `CONVERTER_LIVE_SCENARIO=unsupported node landing-page/scripts/live-converter.mjs` to verify out-of-scope rejection and help without sharing.
+- Generate `--unknown-bank --non-gbp`, then run `CONVERTER_LIVE_SCENARIO=unsupported node landing-page/scripts/live-converter.mjs` to verify out-of-scope rejection and workflow contact.
 
-## Help requests and operator follow-up
+## Legacy help requests and operator follow-up
 
 `help` is an authenticated API action with a conversion ID and required boolean `share_statement`. The server resolves ownership and uses the existing private profile. It stores one idempotent request per visitor/conversion in `converter_help_requests`. Checking the optional sharing box is separate from requesting contact. Subsequent requests can revoke or update sharing; deleting/expiring a conversion revokes it. Browser users cannot insert requests directly or read another visitor's requests.
 
@@ -89,4 +94,18 @@ The repository skill `.codex/skills/converter-delivery/SKILL.md` documents deliv
 
 Name, email and practice are required in both the interface and API. The DB stores email separately from Auth; it is unverified. The optional role column preserves legacy profiles but is not collected. Two visitors may enter the same email and still receive different anonymous identities, private files and quotas. The server never retrieves an old session by email. Existing profiles without an email must complete the form before a new upload.
 
-The 50-page allowance is per private browser identity. Clearing browser data or ending a session loses access to its results and can create a fresh allowance. No verified-email or per-person quota is claimed. The page-limit message and workflow contact action appear only when the allowance is exhausted or an upload would exceed it. Follow-up consent remains a separate explicit checkbox after export.
+The 50-page allowance is per private browser identity. Clearing browser data or ending a session loses access to its results and can create a fresh allowance. No verified-email or per-person quota is claimed. The page-limit message appears only when the allowance is exhausted or an upload would exceed it. Workflow contact uses an explicit email link; there is no follow-up consent checkbox in the interface.
+
+## Completion and workflow contact
+
+The workbench keeps a completed result visible, including after reload. Review transactions returns to the extracted rows; Convert another statement explicitly opens a new upload and preserves access through Recent conversions. Finished runs say “Extraction completed”; any missing fields or uncertain pages are listed underneath without attributing their cause to the PDF or extractor. Failed extractions show their reason and retry/delete actions in the workbench.
+
+A single Contact us email CTA offers workflow integration. The interface no longer creates help-sharing or follow-up requests or presents statement-access consent. The existing help API and historical consent records remain backend-only legacy functionality; the operator access restrictions above still apply to those records. The browser harness now verifies the contact link and completion state. Both formats remain downloadable whenever rows exist; only incomplete extraction is surfaced.
+
+Save corrections and both downloads share an action row below the transaction table. The expiry notice sits above the source PDF. Recent conversions have a separate trash button that opens a styled confirmation dialog; Cancel and Escape preserve the statement and return focus to the trash button.
+
+## Local validation, 5 September 2026
+
+The simplified download flow passed 19 engine tests, 13 browser tests, the local API isolation/checkpoint/export suite and DB invariant assertions. Real single-page complete and incomplete Mistral extractions passed exact transaction values, both Excel/CSV downloads including unsaved edits, blank missing amounts, saved-correction persistence, mobile layout and deletion. The final styled deletion dialog is covered by browser regression tests for confirmation, cancellation, Escape, focus restoration and mobile layout.
+
+The eight-page boundary fixture did not pass live accuracy checks: one run returned three rows instead of two; a second returned two rows but omitted the `PROJECT ALPHA` description continuation. These assertions remain strict. The extraction prompt and chunk-ownership algorithm were not changed by the download work; multi-page accuracy remains an observed limitation. Synthetic failure evidence is retained in ignored `.local/live-result/complete/`.

@@ -8,8 +8,47 @@ import {
   user,
   wakeWorker,
 } from '../_shared/runtime.ts';
-import { validatePdf } from '../_shared/extraction.ts';
-import { API_VERSION, assertStatement, checkStatement, xeroCsv } from '../_shared/statement.ts';
+import { type Chunk, combine, validatePdf } from '../_shared/extraction.ts';
+import {
+  API_VERSION,
+  assertStatement,
+  checkStatement,
+  isIncomplete,
+  transactionEdits,
+  xeroCsv,
+} from '../_shared/statement.ts';
+// Authorize before reading private checkpoints and re-check expiry/deletion after the read.
+async function resultFor(actor: string, id: string, through?: number) {
+  const job = await command('get', actor, id);
+  if (
+    through !== undefined && (!Number.isInteger(through) || through < 0 || through > job.next_page)
+  ) {
+    throw new AppError('REVISION', 409);
+  }
+  let statement = job.content?.corrected ?? null;
+  let extractedPages = job.next_page;
+  if (!statement || (through !== undefined && through < job.pages)) {
+    const { data, error } = await db().from('conversion_content').select('chunks').eq('job_id', id)
+      .maybeSingle();
+    if (error) throw new AppError('REQUEST_FAILED');
+    const chunks = (data?.chunks ?? []).filter((c: Chunk) =>
+      c.through <= (through ?? job.next_page)
+    );
+    extractedPages = chunks.at(-1)?.through ?? 0;
+    statement = null;
+    if (chunks.some((c: Chunk) => c.statement?.transactions.length)) {
+      statement = combine(chunks, extractedPages);
+      statement.extraction = { ...statement.extraction!, complete: false };
+    }
+  }
+  await command('get', actor, id);
+  return {
+    ...job,
+    extracted_pages: extractedPages,
+    content: statement ? { corrected: statement } : null,
+  };
+}
+
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin') ?? '';
   const headers: Record<string, string> = {
@@ -124,7 +163,7 @@ Deno.serve(async (req) => {
         await command('help', actor.id, body.id, { share_statement: body.share_statement }),
       );
     }
-    if (action === 'get') return json(await command('get', actor.id, body.id));
+    if (action === 'get') return json(await resultFor(actor.id, body.id));
     if (action === 'delete') {
       const j = await command('delete', actor.id, body.id);
       await removeObject(j.object_path, body.id);
@@ -153,34 +192,38 @@ Deno.serve(async (req) => {
       if (!current || body.statement.transactions.length !== current.transactions.length) {
         throw new AppError('INVALID_EDIT');
       }
-      const statement = {
-        ...current,
-        transactions: body.statement.transactions.map((t: Record<string, unknown>, i: number) => ({
-          ...current.transactions[i],
-          date: t.date,
-          description: t.description,
-          amount: t.amount,
-        })),
-      };
+      const statement = transactionEdits(current, body.statement);
       return json({
         ...await command('edit', actor.id, body.id, { revision: body.revision, statement }),
         checks: checkStatement(statement),
       });
     }
     if (action === 'export') {
-      const j = await command('get', actor.id, body.id);
-      const statement = j.content?.corrected;
-      if (!statement || j.revision !== body.revision) throw new AppError('REVISION', 409);
-      assertStatement(statement);
       if (!['excel', 'xero'].includes(body.format)) throw new AppError('FORMAT');
-      const checks = checkStatement(statement);
-      if (
-        body.format === 'xero' && (!checks.canExport ||
-          (checks.balance === 'unavailable' && body.acknowledged !== true))
-      ) throw new AppError('REVIEW_REQUIRED');
-      const files = body.format === 'xero' ? xeroCsv(statement, body.acknowledged === true) : null;
-      await command('export', actor.id, body.id, { format: body.format });
-      return json({ statement, checks: checkStatement(statement), files });
+      const j = await resultFor(actor.id, body.id, body.extracted_pages);
+      let statement = j.content?.corrected;
+      if (!statement?.transactions.length) throw new AppError('NO_TRANSACTIONS');
+      // Downloads use the visible snapshot without overwriting saved corrections.
+      if (body.statement) {
+        try {
+          statement = transactionEdits(statement, body.statement);
+        } catch {
+          throw new AppError('INVALID_EDIT');
+        }
+      } else if (j.revision !== body.revision) throw new AppError('REVISION', 409);
+      assertStatement(statement);
+      const inProgress = ['queued', 'processing', 'uploading'].includes(j.state) ||
+        j.extracted_pages < j.pages && j.state === 'review';
+      const files = body.format === 'xero' ? xeroCsv(statement) : null;
+      // Completed exports retain the existing event. Interim downloads do not change job state or quota.
+      if (j.state === 'review') await command('export', actor.id, body.id, { format: body.format });
+      else await command('get', actor.id, body.id);
+      return json({
+        statement,
+        incomplete: isIncomplete(statement),
+        in_progress: inProgress,
+        files,
+      });
     }
     throw new AppError('NOT_FOUND', 404);
   } catch (error) {

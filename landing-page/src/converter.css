@@ -41,7 +41,6 @@
   margin-bottom: 18px;
 }
 .workbench h3,
-.next-step h3,
 .tool-notes h3 {
   font-size: 1.25rem;
   font-weight: 500;
@@ -117,7 +116,6 @@
 }
 .workflow-link a,
 .small a,
-.next-step a,
 .tool-notes a {
   text-decoration: underline;
   text-underline-offset: 4px;
@@ -142,6 +140,34 @@
 .recent {
   margin-top: 52px;
 }
+.confirm-dialog {
+  width: min(480px, calc(100% - 44px));
+  max-height: calc(100% - 44px);
+  margin: auto;
+  padding: 32px;
+  color: var(--ink);
+  background: var(--canvas);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+}
+.confirm-dialog::backdrop { background: rgb(25 45 36 / 35%); }
+.confirm-dialog h2 {
+  margin: 0 0 16px;
+  font: 400 2rem/1.15 var(--serif);
+}
+.confirm-dialog p { margin: 0; color: var(--body); }
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 28px;
+}
+@media (max-width: 480px) {
+  .confirm-dialog { padding: 24px; }
+  .dialog-actions { flex-direction: column; }
+  .dialog-actions > button { width: 100%; }
+}
 .recent h2 {
   font: 400 2rem var(--serif);
   margin-bottom: 18px;
@@ -150,6 +176,33 @@
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+}
+.recent-conversion {
+  display: flex;
+  max-width: 100%;
+  border: 1px solid var(--primary);
+  border-radius: 4px;
+}
+.recent-conversion .conversion-open {
+  border: 0;
+  border-radius: 3px 0 0 3px;
+  text-align: left;
+  min-width: 0;
+}
+.recent-conversion .conversion-delete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 46px;
+  padding: 10px;
+  border: 0;
+  border-left: 1px solid var(--rule);
+  border-radius: 0 3px 3px 0;
+}
+.conversion-delete:hover:not(:disabled) {
+  color: #a84424;
+  background: var(--soft);
 }
 .review {
   margin: 72px 0 0;
@@ -166,20 +219,8 @@
   font: 400 clamp(2.5rem, 4vw, 4rem) var(--serif);
   margin: 12px 0;
 }
-.checks {
-  padding: 22px 0;
-  margin: 24px 0;
-  border-block: 1px solid var(--rule);
-}
-.checks strong {
-  font-weight: 550;
-}
-.checks ul {
-  margin: 12px 0 0;
-  padding-left: 22px;
-  font-size: 1rem;
-}
 .review-grid {
+  margin-top: 28px;
   display: grid;
   grid-template-columns: 38% minmax(0, 1fr);
   gap: 28px;
@@ -238,33 +279,26 @@
   border: 2px solid #a84424;
 }
 #save-status {
-  margin-left: 12px;
+  margin-top: 8px;
 }
+#save-status:empty { display: none; }
+#expiry { margin: 0 0 8px; }
 .review-tabs {
   display: none;
 }
-.exports {
-  margin-top: 32px;
-  padding: 28px;
-  background: var(--soft);
-}
-.exports label,
-.next-step label {
-  display: block;
-  font-size: 1rem;
-  margin-bottom: 16px;
+.review-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 .export-buttons {
   display: flex;
+  justify-content: flex-end;
   gap: 12px;
   flex-wrap: wrap;
-  margin-top: 18px;
-}
-.next-step {
-  padding: 32px 0;
-}
-.next-step label {
-  margin-top: 24px;
+  margin-left: auto;
 }
 .tool-notes {
   border-top: 1px solid var(--rule);
@@ -363,9 +397,11 @@ iframe:focus-visible {
     gap: 24px;
     flex-wrap: wrap;
   }
-  .exports {
-    padding: 20px;
-  }
+  .review-actions { align-items: stretch; }
+  .review-actions > button,
+  .export-buttons,
+  .export-buttons > button { width: 100%; }
+  .export-buttons { margin-left: 0; }
 }
 /* Keep the converter's contact action visible at the marketing site's mobile breakpoint. */
 .site-header nav > a:last-of-type {
@@ -380,8 +416,18 @@ iframe:focus-visible {
   font: 400 1.625rem/1.2 var(--serif);
 }
 
-.statement-help { margin-top: 36px; padding: 32px; background: var(--soft); border: 1px solid var(--rule); border-radius: 8px; }
-.statement-help h2 { font: 400 clamp(2rem, 3vw, 3rem)/1.15 var(--serif); }
-.statement-help p { margin: 18px 0; max-width: 65ch; }
-.statement-help label { display: block; margin-top: 24px; }
+.workflow-contact { margin-top: 36px; padding: 32px; background: var(--soft); border: 1px solid var(--rule); border-radius: 8px; }
+.workflow-contact h2 { font: 400 clamp(2rem, 3vw, 3rem)/1.15 var(--serif); }
+.workflow-contact p { margin: 18px 0; max-width: 65ch; }
 #result-status { max-width: 50ch; }
+
+.completion-actions { display: grid; gap: 12px; margin-top: 24px; }
+
+.extraction-details {
+  padding-left: 22px;
+  margin: 16px 0;
+  max-width: 60ch;
+  color: var(--body);
+  font-size: 1rem;
+}
+.extraction-details li + li { margin-top: 8px; }

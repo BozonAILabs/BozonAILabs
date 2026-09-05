@@ -164,15 +164,40 @@ export function spreadsheetText(value: string): string {
   return /^[\s]*[=+\-@\t\r\n]/.test(value) ? `'${value}` : value;
 }
 const csvCell = (s: string) => `"${s.replaceAll('"', '""')}"`;
-export function xeroCsv(s: Statement, acknowledged = false): string[] {
-  const checks = checkStatement(s);
-  if (!checks.canExport || (checks.balance === 'unavailable' && !acknowledged)) {
-    throw new Error('Review statement checks before exporting.');
+/** Extraction completeness is independent of arithmetic or import validation. */
+export function isIncomplete(s: Statement): boolean {
+  return s.extraction?.complete === false || !!s.extraction?.unreadablePages.length ||
+    !!s.extraction?.uncertainPages.length ||
+    s.transactions.some((t) => !t.date.trim() || !t.description.trim() || t.amount === null);
+}
+
+/** Only transaction fields can be edited; source metadata stays server-owned. */
+export function transactionEdits(current: Statement, proposed: unknown): Statement {
+  assertStatement(proposed);
+  if (proposed.transactions.length !== current.transactions.length) {
+    throw new Error('Invalid transaction count');
   }
+  return {
+    ...current,
+    transactions: proposed.transactions.map((t, i) => ({
+      ...current.transactions[i],
+      date: t.date,
+      description: t.description,
+      amount: t.amount,
+    })),
+  };
+}
+
+export function xeroCsv(s: Statement): string[] {
+  assertStatement(s);
   const files: string[] = [];
   for (let i = 0; i < s.transactions.length; i += 1000) {
     const rows = s.transactions.slice(i, i + 1000).map((t) =>
-      [t.date.split('-').reverse().join('/'), money(t.amount), spreadsheetText(t.description)].map(
+      [
+        validDate(t.date) ? t.date.split('-').reverse().join('/') : spreadsheetText(t.date),
+        money(t.amount),
+        spreadsheetText(t.description),
+      ].map(
         csvCell,
       ).join(',')
     );

@@ -3,7 +3,7 @@ import { chromium } from '@playwright/test';
 import { createClient } from '@supabase/supabase-js';
 import ExcelJS from 'exceljs';
 import { execFileSync } from 'node:child_process';
-import { readFile, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import assert from 'node:assert/strict';
 const scenario = process.env.CONVERTER_LIVE_SCENARIO ?? 'complete';
@@ -34,19 +34,17 @@ try {
   await page.locator('#pdf').setInputFiles(resolve(root, '.local/statement-test.pdf'));
   await page.getByRole('button', { name: 'Convert statement' }).click();
   if (scenario === 'unsupported') {
-    await page.locator('#statement-help').waitFor({ timeout: 120000 });
+    await page.locator('#failed').waitFor({ timeout: 120000 });
     assert.equal(await page.locator('#review').isVisible(),false);
     const {data: jobs} = await admin.from('conversions').select('id,state,error_code').eq('user_id',userId);
     assert.equal(jobs.length,1); jobId=jobs[0].id;
     assert.equal(jobs[0].state,'failed');
     assert(['UNSUPPORTED_CURRENCY','UNSUPPORTED_STATEMENT'].includes(jobs[0].error_code));
-    await page.getByRole('button',{name:'Request help',exact:true}).click();
-    await page.getByText('Request saved. Your statement has not been shared with our team.').waitFor();
-    const {data: request} = await admin.from('converter_help_requests').select('share_statement').eq('job_id',jobId).single();
-    assert.equal(request.share_statement,false);
-    console.log('PASS: real non-GBP extraction rejected; no finished output; private help request saved.');
+    assert.match(await page.locator('#workflow-contact a').getAttribute('href'), /^mailto:/);
+    console.log('PASS: real non-GBP extraction rejected; no finished output; workflow contact available.');
   } else {
-  await page.locator('#rows tr').first().waitFor({ timeout: 300000 });
+  await page.locator('#completed').waitFor({ timeout: 300000 });
+  await page.locator('#rows tr').first().waitFor();
   assert.equal(await page.locator('#rows tr').count(), 2);
   assert.equal(await page.getByLabel('Amount in pounds for row 1').inputValue(), '100.00');
   assert.equal(await page.getByLabel('Amount in pounds for row 2').inputValue(), partial ? '' : '-102.00');
@@ -59,9 +57,8 @@ try {
   console.log('Extraction quality:',content.chunks.map(c => c.statement.extraction));
   if (jobs[0].pages === 8) assert.match(await page.getByLabel('description for row 1', { exact: true }).inputValue(), /PROJECT ALPHA/);
   await page.getByLabel('description for row 2', { exact: true }).fill('Office rent reviewed');
-  await page.getByRole('button', { name: 'Save corrections' }).click();
   await page.locator('#excel:enabled').waitFor();
-  for (const [button, filename] of partial ? [['Download partial Excel','statement.xlsx']] : [['Download Excel','statement.xlsx'], ['Download Xero CSV','xero.csv']]) {
+  for (const [button, filename] of [['Download Excel','statement.xlsx'], ['Download Xero CSV','xero.csv']]) {
     const download = page.waitForEvent('download');
     await page.getByRole('button', { name: button }).click();
     await (await download).saveAs(resolve(output,filename));
@@ -71,37 +68,43 @@ try {
   assert.equal(tx.rowCount,3); assert.equal(tx.getCell('C2').value,100); assert.equal(tx.getCell('C3').value,partial ? null : -102);
   assert.equal(tx.getCell('B3').value,'Office rent reviewed');
   if (partial) {
-    assert.match(String(book.getWorksheet('Checks').getCell('B2').value), /PARTIAL EXTRACTION/);
-    assert.equal(await page.locator('#xero').isDisabled(),true);
-    await page.getByRole('button',{name:'Request help',exact:true}).click();
-    await page.getByText('Request saved. Your statement has not been shared with our team.').waitFor();
-    await page.locator('#share-statement').check();
-    await page.getByRole('button',{name:'Update request'}).click();
-    await page.getByText('Request saved. Our team can access this statement until it expires or you delete it.').waitFor();
-    const {data: help} = await admin.from('converter_help_requests').select('share_statement').eq('job_id',jobId).single();
-    assert.equal(help.share_statement,true);
-  } else {
-  const csv = await readFile(resolve(output,'xero.csv'),'utf8');
-  assert.match(csv,/Office rent reviewed/); assert.match(csv,/-102.00/);
+    assert.equal(book.getWorksheet('Extraction').getCell('A2').value, 'Incomplete extraction');
+    assert.equal(await page.locator('#xero').isDisabled(),false);
+    assert.equal(await page.locator('#share-statement').count(), 0);
+    assert.match(await page.locator('#workflow-contact a').getAttribute('href'), /^mailto:/);
   }
+  const csv = await readFile(resolve(output,'xero.csv'),'utf8');
+  assert.match(csv,/Office rent reviewed/);
+  if (partial) assert.match(csv, /"","Office rent reviewed"/);
+  else assert.match(csv,/-102.00/);
+  await page.getByRole('button', { name: 'Save corrections' }).click();
+  await page.getByText('Corrections saved', {exact:true}).waitFor();
+  await page.reload();
+  await page.locator('#completed').waitFor();
+  assert.equal(await page.locator('#upload').isVisible(), false);
   await page.locator('#review').screenshot({ path: resolve(output,'review.png') });
   await page.setViewportSize({ width: 390, height: 844 });
   const overflow = await page.evaluate(() => ({ width: innerWidth, document: document.documentElement.scrollWidth, elements: [...document.querySelectorAll('body *')].filter(e => e.getBoundingClientRect().right > innerWidth + 1 && getComputedStyle(e).display !== 'none').map(e => ({ tag: e.tagName, id: e.id, cls: e.className, width: e.getBoundingClientRect().width })).slice(0,20) }));
   if (overflow.document > overflow.width) console.log('Overflow:', overflow);
   await page.screenshot({ path: resolve(output,'mobile.png'),fullPage:true });
   assert.equal(overflow.document <= overflow.width, true);
-  page.on('dialog', dialog => dialog.accept());
-  await page.getByRole('button', { name: 'Delete file & transactions' }).click();
+  await page.getByRole('button', { name: /Delete conversion from/ }).click();
+  await page.getByRole('dialog', { name: 'Delete this statement?' }).getByRole('button', { name: 'Delete statement', exact: true }).click();
   await page.locator('#review').waitFor({ state: 'hidden' });
   const { data: removed } = await admin.from('conversion_content').select('job_id').eq('job_id',jobId);
   assert.deepEqual(removed, []);
-  if (partial) {
-    const {data: help} = await admin.from('converter_help_requests').select('share_statement').eq('job_id',jobId).single();
-    assert.equal(help.share_statement,false);
-  }
-  console.log(`PASS: ${scenario} result; contact form + real anonymous session, PDF upload, ${jobs[0].pages}-page Mistral extraction (${content.chunks.length} chunks), review, saved edit, ${partial ? 'partial workbook, blocked Xero and help consent' : 'verified Excel/CSV downloads'}, mobile fit, deletion.`);
+  console.log(`PASS: ${scenario} result; contact form + real anonymous session, PDF upload, ${jobs[0].pages}-page Mistral extraction (${content.chunks.length} chunks), review, saved edit, ${partial ? 'partial Excel/CSV downloads and workflow contact' : 'verified Excel/CSV downloads'}, mobile fit, deletion.`);
   }
 } catch (e) {
+  // This harness only processes generated synthetic fixtures. Keep failure evidence local.
+  await page.screenshot({path:resolve(output,'failure.png'),fullPage:true}).catch(() => {});
+  if (userId) {
+    const {data: jobs} = await admin.from('conversions').select('id').eq('user_id',userId);
+    if (jobs?.length) {
+      const {data: results} = await admin.from('conversion_content').select('chunks,corrected').in('job_id',jobs.map(j => j.id));
+      await writeFile(resolve(output,'failure-result.json'),JSON.stringify(results,null,2));
+    }
+  }
   console.error('Live flow failed:', e.message);
   console.error('Visible status:', await page.locator('#error, #progress-text, #availability').allTextContents().catch(() => ['Page unavailable']));
   throw e;

@@ -1,7 +1,7 @@
 import { api, client, configured, ConverterApiError } from "./converter-client";
 import {
   API_VERSION,
-  checkStatement,
+  isIncomplete,
   money,
   pence,
   spreadsheetText,
@@ -13,7 +13,9 @@ let epoch = 0,
   navigation = 0,
   edits = 0,
   accountRequest = 0,
-  saving = false;
+  saving = false,
+  exporting = false,
+  remainingPages = 0;
 let active: any = null,
   draft: Statement | null = null,
   dirty = false,
@@ -41,10 +43,10 @@ const run = async (fn: () => Promise<void>) => {
 };
 const stage = (id: string) => {
   const focused = document.activeElement;
-  const hidingFocus = ["profile", "upload", "quota", "progress"].some(
+  const hidingFocus = ["profile", "upload", "quota", "progress", "completed", "failed"].some(
     (name) => name !== id && $(name).contains(focused),
   );
-  for (const name of ["profile", "upload", "quota", "progress"]) {
+  for (const name of ["profile", "upload", "quota", "progress", "completed", "failed"]) {
     $(name).hidden = name !== id;
   }
   if (hidingFocus) {
@@ -67,46 +69,77 @@ function clearReview() {
   draft = null;
   dirty = false;
   saving = false;
+  exporting = false;
   $("review").hidden = true;
   $("rows").replaceChildren();
-  $("next-step").hidden = true;
-  $("statement-help").hidden = true;
-  $("help-status").textContent = "";
+  $("workflow-contact").hidden = true;
+  $("completed").hidden = true;
+  $("failed").hidden = true;
 }
+function missingDetails(statement: Statement, includeFallback: boolean): string[] {
+  const details: string[] = [];
+  const identifiedPages = new Set<number>();
+  statement.transactions.forEach((row, index) => {
+    const fields = [
+      !row.date.trim() ? "date" : "",
+      !row.description.trim() ? "description" : "",
+      row.amount === null ? "amount" : "",
+    ].filter(Boolean);
+    if (!fields.length) return;
+    const missing = fields.length > 1
+      ? `${fields.slice(0, -1).join(", ")} and ${fields.at(-1)}`
+      : fields[0];
+    details.push(`Row ${index + 1} (page ${row.page}): ${missing} missing.`);
+    identifiedPages.add(row.page);
+  });
+  const unreadable = new Set(statement.extraction?.unreadablePages ?? []);
+  for (const page of [...unreadable].sort((a, b) => a - b)) {
+    details.push(`Page ${page}: could not be read. Transactions may be missing.`);
+  }
+  for (const page of [...new Set(statement.extraction?.uncertainPages ?? [])].sort((a, b) => a - b)) {
+    if (!unreadable.has(page) && !identifiedPages.has(page)) {
+      details.push(`Page ${page}: the extractor could not read all details confidently.`);
+    }
+  }
+  if (!details.length && includeFallback && isIncomplete(statement)) {
+    details.push("The extractor reported missing details but did not identify a row or page.");
+  }
+  return details;
+}
+
 function check() {
   if (!draft) return;
-  const checks = checkStatement(draft);
-  const partial = draft.extraction?.complete === false;
-  $("result-status").textContent = partial
-    ? "Partial result — some transactions or details may be missing."
-    : checks.canExport ? "Ready for your review." : "Needs attention — check the highlighted issues.";
-  $("excel").textContent = partial ? "Download partial Excel" : "Download Excel";
-  $("statement-help").hidden = checks.canExport;
-  const title = document.createElement("strong");
-  title.textContent = {
-    matches: "Balance matches",
-    mismatch: "Balance mismatch",
-    unavailable: "Balance unavailable",
-  }[checks.balance];
-  const list = document.createElement("ul");
-  for (const issue of checks.issues) {
-    const li = document.createElement("li");
-    li.textContent = `${
-      issue.row !== undefined ? `Row ${issue.row + 1}: ` : ""
-    }${issue.message}`;
-    list.append(li);
+  const partial = isIncomplete(draft);
+  const inProgress = ["queued", "processing", "uploading"].includes(active?.state);
+  $("result-status").textContent = inProgress
+    ? "Extraction still in progress. You can download the results available so far."
+    : partial
+    ? "Extraction completed."
+    : "Extraction completed. Your transactions are ready to download.";
+  $("completed-title").textContent = "Extraction completed";
+  $("completed-message").hidden = partial;
+  $("completed-message").textContent = "Your transactions are ready to download.";
+  const details = missingDetails(draft, !inProgress);
+  for (const id of ["completed-details", "result-details"]) {
+    const list = $(id);
+    list.replaceChildren(...details.map((message) => {
+      const item = document.createElement("li");
+      item.textContent = message;
+      return item;
+    }));
+    list.hidden = details.length === 0;
   }
-  $("checks").replaceChildren(title, list);
-  $("ack-wrap").hidden = checks.balance !== "unavailable" || !checks.canExport;
-  $("xero").toggleAttribute(
-    "disabled",
-    dirty ||
-      !checks.canExport ||
-      (checks.balance === "unavailable" && !$<HTMLInputElement>("ack").checked),
-  );
-  $("excel").toggleAttribute("disabled", dirty);
+  $("workflow-contact").hidden = false;
+  for (const format of ["excel", "xero"]) {
+    $(format).toggleAttribute("disabled", !draft.transactions.length || exporting);
+  }
+  $("save").hidden = active?.state !== "review";
   $("save").toggleAttribute("disabled", !dirty || saving);
+  $("editing-note").textContent = inProgress
+    ? "More rows will appear as extraction continues. You can edit them when processing finishes."
+    : "Money in is positive; money out is negative. Downloads include your edits.";
 }
+
 function renderRows() {
   if (!draft) return;
   $("rows").replaceChildren();
@@ -121,6 +154,7 @@ function renderRows() {
         `${key === "amount" ? "Amount in pounds" : key} for row ${i + 1}`,
       );
       input.type = key === "date" ? "date" : "text";
+      input.readOnly = ["queued", "processing", "uploading"].includes(active?.state);
       if (key === "amount") input.inputMode = "decimal";
       if (key === "description") input.maxLength = 2000;
       input.addEventListener("input", () => {
@@ -147,15 +181,34 @@ async function account(autoOpen = true) {
     request = ++accountRequest;
   const a = await api("account");
   if (started !== epoch || request !== accountRequest) return;
+  remainingPages = a.remaining;
   $("recent").hidden = !a.jobs.length;
   $("job-list").replaceChildren();
   for (const j of a.jobs) {
+    const item = document.createElement("div");
+    item.className = "recent-conversion";
     const b = document.createElement("button");
+    b.className = "conversion-open";
     b.textContent = `${new Date(j.created_at).toLocaleDateString("en-GB")} · ${
       j.pages ?? "–"
     } pages · ${j.state === "review" ? "Ready to review" : j.state}`;
     b.onclick = () => void run(() => open(j.id));
-    $("job-list").append(b);
+    const trash = document.createElement("button");
+    trash.className = "conversion-delete";
+    trash.type = "button";
+    trash.title = "Delete conversion";
+    trash.setAttribute("aria-label", `Delete conversion from ${new Date(j.created_at).toLocaleDateString("en-GB")}, ${j.pages ?? "–"} pages`);
+    trash.innerHTML = '<svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6M14 10v6"/></svg>';
+    trash.onclick = () => void run(async () => {
+      trash.disabled = true;
+      try { await deleteConversion(j.id); }
+      finally {
+        trash.disabled = false;
+        if (trash.isConnected) trash.focus();
+      }
+    });
+    item.append(b, trash);
+    $("job-list").append(item);
   }
   if (!a.profile?.email) {
     stage("profile");
@@ -164,10 +217,14 @@ async function account(autoOpen = true) {
       ["uploading", "queued", "processing"].includes(j.state)
     );
     if (pending && autoOpen) await open(pending.id);
-    else if (!pending) stage(a.remaining > 0 ? "upload" : "quota");
+    else if (active?.state === "review") stage("completed");
+    else if (active?.state === "failed") stage("failed");
+    else if (autoOpen && ["review", "failed"].includes(a.jobs[0]?.state)) {
+      await open(a.jobs[0].id, 0, false);
+    } else if (!pending) stage(a.remaining > 0 ? "upload" : "quota");
   }
 }
-async function open(id: string, retry = 0) {
+async function open(id: string, retry = 0, scroll = true) {
   if (dirty && !confirm("Discard your unsaved corrections?")) return;
   clearReview();
   const started = epoch,
@@ -180,7 +237,7 @@ async function open(id: string, retry = 0) {
     if (!current()) return;
     if (retry < 3) {
       timer = window.setTimeout(
-        () => void run(() => open(id, retry + 1)),
+        () => void run(() => open(id, retry + 1, scroll)),
         3000 * (retry + 1),
       );
     } else {
@@ -204,85 +261,73 @@ async function open(id: string, retry = 0) {
     },
     Math.max(0, Date.parse(job.expires_at) - Date.now()),
   );
-  prepareHelp(job);
+  const inProgress = ["queued", "processing", "uploading"].includes(job.state);
   if (job.state === "review") {
-    draft = structuredClone(job.content.corrected);
-    $("review").hidden = false;
-    $<HTMLInputElement>("ack").checked = false;
-    $("save-status").textContent = "";
-    $("expiry").textContent = `File and transactions expire ${
-      new Date(
-        job.expires_at,
-      ).toLocaleString("en-GB")
-    }.`;
-    renderRows();
+    await account(false);
+  } else if (job.state === "failed") {
     await account(false);
     if (!current()) return;
-    $("review-title").tabIndex = -1;
-    $("review-title").focus({ preventScroll: true });
-    $("review").scrollIntoView({
-      behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
-        ? "instant"
-        : "smooth",
-      block: "start",
-    });
+    prepareFailure(job);
+    $("workflow-contact").hidden = false;
+    if (scroll) $("workbench").scrollIntoView({ block: "start" });
+  } else if (inProgress) {
+    stage("progress");
+    $("progress-text").textContent = job.state === "uploading"
+      ? "Waiting for your PDF upload. Delete this conversion if the upload was interrupted."
+      : `${job.next_page} of ${job.pages} pages prepared. This can take a few minutes.`;
+    const poll = () => {
+      if (!current()) return;
+      if (exporting) timer = window.setTimeout(poll, 1000);
+      else void run(() => open(id, 0, false));
+    };
+    timer = window.setTimeout(poll, 5000);
+  }
+  if (!current()) return;
+  if (job.content?.corrected?.transactions.length) {
+    draft = structuredClone(job.content.corrected);
+    $("review").hidden = false;
+    $("save-status").textContent = "";
+    $("expiry").textContent = `File and transactions expire ${new Date(job.expires_at).toLocaleString("en-GB")}.`;
+    renderRows();
+    if (scroll && !inProgress) focusReview();
     const blob = await api("source", { id });
     if (!current()) return;
     sourceUrl = URL.createObjectURL(blob);
     $<HTMLIFrameElement>("source").src = sourceUrl;
     $<HTMLAnchorElement>("source-link").href = sourceUrl;
-  } else if (job.state === "failed") {
-    await account(false);
-    if (current()) {
-      $("statement-help").hidden = false;
-      $("statement-help").scrollIntoView({ block: "start" });
-    }
-  } else if (["queued", "processing", "uploading"].includes(job.state)) {
-    stage("progress");
-    $("progress-text").textContent = job.state === "uploading"
-      ? "Waiting for your PDF upload. Delete this conversion if the upload was interrupted."
-      : `${job.next_page} of ${job.pages} pages prepared. This can take a few minutes.`;
-    timer = window.setTimeout(() => void run(() => open(id)), 5000);
   }
 }
-function prepareHelp(job: any) {
+
+function focusReview() {
+  $("review-title").tabIndex = -1;
+  $("review-title").focus({ preventScroll: true });
+  $("review").scrollIntoView({
+    behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
+    block: "start",
+  });
+}
+$("review-result").onclick = focusReview;
+for (const id of ["convert-another", "retry-statement"]) {
+  $(id).onclick = () => {
+    if (dirty && !confirm("Discard your unsaved corrections?")) return;
+    clearReview();
+    $("error").hidden = true;
+    $<HTMLInputElement>("pdf").value = "";
+    stage(remainingPages > 0 ? "upload" : "quota");
+    $("work-title").tabIndex = -1;
+    $("work-title").focus();
+  };
+}
+function prepareFailure(job: any) {
   const failures: Record<string, string> = {
-    UNSUPPORTED_STATEMENT: "We couldn’t identify one English-language GBP account statement. Try a single-account statement or request help.",
-    UNSUPPORTED_CURRENCY: "This statement contains a non-GBP or mixed-currency ledger. Try a GBP-only statement or request help.",
+    UNSUPPORTED_STATEMENT: "We couldn’t identify one English-language GBP account statement. Try a single-account statement.",
+    UNSUPPORTED_CURRENCY: "This statement contains a non-GBP or mixed-currency ledger. Try a GBP-only statement.",
     INCONSISTENT_STATEMENT: "Account details or balances conflict between pages. We haven’t combined them into a spreadsheet.",
     NO_TRANSACTIONS: "We couldn’t extract any usable transaction rows from this statement.",
   };
-  $("help-message").textContent = job.state === "failed"
-    ? (failures[job.error_code] ?? "We couldn’t read this statement reliably.") + " Your pages have been returned."
-    : "Need help with the highlighted issues?";
-  const share = $<HTMLInputElement>("share-statement");
-  share.checked = job.help?.share_statement === true;
-  share.disabled = job.storage_deleted || !job.pages;
-  if (share.disabled) share.checked = false;
-  $("sharing-note").textContent = share.disabled
-    ? "The source file is unavailable. You can still request help."
-    : "Optional. Access ends when you delete the conversion or its 24-hour storage period expires.";
-  $("help-status").textContent = job.help ? "Your request is saved. You can update your sharing choice." : "We’ll use the contact details you already provided.";
-  $("request-help").textContent = job.help ? "Update request" : "Request help";
-  $("request-help").removeAttribute("disabled");
-  $("delete-failed").hidden = job.state !== "failed";
+  $("failure-message").textContent =
+    (failures[job.error_code] ?? "We couldn’t read this statement reliably.") + " Your pages have been returned.";
 }
-$("request-help").onclick = () => void run(async () => {
-  if (!active) return;
-  const started = epoch, view = navigation, id = active.id;
-  $("request-help").setAttribute("disabled", "");
-  try {
-    const result = await api("help", { id, share_statement: $<HTMLInputElement>("share-statement").checked });
-    if (started !== epoch || view !== navigation || active?.id !== id) return;
-    active.help = result;
-    $("help-status").textContent = result.share_statement
-      ? "Request saved. Our team can access this statement until it expires or you delete it."
-      : "Request saved. Your statement has not been shared with our team.";
-    $("request-help").textContent = "Update request";
-  } finally {
-    if (started === epoch && view === navigation) $("request-help").removeAttribute("disabled");
-  }
-});
 function signedOut() {
   epoch++;
   accountRequest++;
@@ -349,15 +394,26 @@ $<HTMLFormElement>("upload").onsubmit = (e) => {
     }
   });
 };
-for (const id of ["delete", "cancel", "delete-failed"]) {
+async function deleteConversion(id: string) {
+  const started = epoch;
+  const dialog = $<HTMLDialogElement>("delete-dialog");
+  if (dialog.open) return;
+  const confirmed = await new Promise<boolean>((resolve) => {
+    dialog.returnValue = "cancel";
+    dialog.addEventListener("close", () => resolve(dialog.returnValue === "delete"), { once: true });
+    dialog.showModal();
+  });
+  if (!confirmed || started !== epoch) return;
+  await api("delete", { id });
+  if (started !== epoch) return;
+  const deletingActive = active?.id === id;
+  if (deletingActive) clearReview();
+  await account(deletingActive);
+}
+for (const id of ["cancel", "delete-failed"]) {
   $(id).onclick = () =>
     void run(async () => {
-      if (!active || !confirm("Delete this statement and its transactions?")) {
-        return;
-      }
-      await api("delete", { id: active.id });
-      clearReview();
-      await account();
+      if (active) await deleteConversion(active.id);
     });
 }
 $("save").onclick = () =>
@@ -388,7 +444,6 @@ $("save").onclick = () =>
       }
     }
   });
-$("ack").onchange = check;
 for (const view of ["rows", "source"]) {
   $("show-" + view).onclick = () => {
     $("review").classList.toggle("source-active", view === "source");
@@ -407,101 +462,87 @@ function download(blob: Blob, name: string) {
 for (const format of ["excel", "xero"]) {
   $(format).onclick = () =>
     void run(async () => {
-      if (!active || dirty) return;
+      if (!active || !draft?.transactions.length || exporting) return;
       const started = epoch,
         view = navigation;
-      const result = await api("export", {
-        id: active.id,
-        revision: active.revision,
-        format,
-        acknowledged: $<HTMLInputElement>("ack").checked,
-      });
-      if (started !== epoch || view !== navigation) return;
-      if (format === "xero") {
-        if (result.files.length === 1) {
-          download(
-            new Blob([result.files[0]], { type: "text/csv;charset=utf-8" }),
-            "xero-statement.csv",
-          );
-        } else {
-          const { default: JSZip } = await import("jszip");
-          const zip = new JSZip();
-          result.files.forEach((file: string, i: number) =>
-            zip.file(`xero-statement-${i + 1}.csv`, file)
-          );
-          const blob = await zip.generateAsync({ type: "blob" });
-          if (started !== epoch || view !== navigation) return;
-          download(blob, "xero-statements.zip");
-        }
-      } else {
-        const { default: ExcelJS } = await import("exceljs");
-        const book = new ExcelJS.Workbook();
-        const partial = result.statement.extraction?.complete === false;
-        const tx = book.addWorksheet(partial ? "Partial transactions" : "Transactions");
-        tx.columns = [
-          { header: "Date", key: "date", width: 15 },
-          { header: "Description", key: "description", width: 55 },
-          { header: "Amount GBP", key: "amount", width: 18 },
-          { header: "Running balance GBP", key: "balance", width: 22 },
-          { header: "Source page", key: "page", width: 14 },
-        ];
-        for (const t of result.statement.transactions) {
-          tx.addRow({
-            date: spreadsheetText(t.date),
-            description: spreadsheetText(t.description),
-            amount: t.amount === null ? null : t.amount / 100,
-            balance: t.balance === null ? null : t.balance / 100,
-            page: t.page,
-          });
-        }
-        tx.getColumn("amount").numFmt = "0.00";
-        tx.getColumn("balance").numFmt = "0.00";
-        tx.getRow(1).font = { bold: true };
-        const checks = book.addWorksheet("Checks");
-        checks.columns = [
-          { header: "Check", width: 28 },
-          {
-            header: "Detail",
-            width: 85,
-          },
-        ];
-        checks.addRow(["Result", partial ? "PARTIAL EXTRACTION — transactions or details may be missing. Not ready for import." : result.checks.canExport ? "Review against source before importing." : "NEEDS ATTENTION — review listed issues before use."]);
-        checks.addRow(["Balance", result.checks.balance]);
-        checks.addRow([
-          "Review",
-          "A matching balance does not prove every transaction is correct.",
-        ]);
-        for (const issue of result.checks.issues) {
-          checks.addRow([
-            issue.row === undefined ? "Statement" : `Row ${issue.row + 1}`,
-            spreadsheetText(issue.message),
-          ]);
-        }
-        const bytes = await book.xlsx.writeBuffer();
+      exporting = true;
+      check();
+      try {
+        const result = await api("export", {
+          id: active.id,
+          revision: active.revision,
+          extracted_pages: active.extracted_pages,
+          statement: structuredClone(draft),
+          format,
+        });
         if (started !== epoch || view !== navigation) return;
-        download(
-          new Blob([new Uint8Array(bytes)], {
-            type:
-              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-          }),
-          partial ? "statement-partial-review.xlsx" : "statement-review.xlsx",
-        );
+        const partial = isIncomplete(result.statement);
+        const suffix = result.in_progress ? "-in-progress" : partial ? "-partial" : "";
+        if (format === "xero") {
+          if (result.files.length === 1) {
+            download(
+              new Blob([result.files[0]], { type: "text/csv;charset=utf-8" }),
+              `xero-statement${suffix}.csv`,
+            );
+          } else {
+            const { default: JSZip } = await import("jszip");
+            const zip = new JSZip();
+            result.files.forEach((file: string, i: number) =>
+              zip.file(`xero-statement${suffix}-${i + 1}.csv`, file)
+            );
+            const blob = await zip.generateAsync({ type: "blob" });
+            if (started !== epoch || view !== navigation) return;
+            download(blob, `xero-statements${suffix}.zip`);
+          }
+        } else {
+          const { default: ExcelJS } = await import("exceljs");
+          const book = new ExcelJS.Workbook();
+          const tx = book.addWorksheet(result.in_progress ? "Available transactions" : partial ? "Partial transactions" : "Transactions");
+          tx.columns = [
+            { header: "Date", key: "date", width: 15 },
+            { header: "Description", key: "description", width: 55 },
+            { header: "Amount GBP", key: "amount", width: 18 },
+            { header: "Running balance GBP", key: "balance", width: 22 },
+            { header: "Source page", key: "page", width: 14 },
+          ];
+          for (const t of result.statement.transactions) {
+            tx.addRow({
+              date: spreadsheetText(t.date),
+              description: spreadsheetText(t.description),
+              amount: t.amount === null ? null : t.amount / 100,
+              balance: t.balance === null ? null : t.balance / 100,
+              page: t.page,
+            });
+          }
+          tx.getColumn("amount").numFmt = "0.00";
+          tx.getColumn("balance").numFmt = "0.00";
+          tx.getRow(1).font = { bold: true };
+          if (partial || result.in_progress) {
+            const extraction = book.addWorksheet("Extraction");
+            extraction.columns = [{ header: "Status", width: 28 }, { header: "Detail", width: 90 }];
+            extraction.addRow([
+              result.in_progress ? "Extraction still in progress" : "Incomplete extraction",
+              "This file contains the available results. Some transactions or details may be missing.",
+            ]);
+          }
+          const bytes = await book.xlsx.writeBuffer();
+          if (started !== epoch || view !== navigation) return;
+          download(
+            new Blob([new Uint8Array(bytes)], {
+              type:
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            }),
+            `statement${suffix}.xlsx`,
+          );
+        }
+      } finally {
+        if (started === epoch && view === navigation) {
+          exporting = false;
+          check();
+        }
       }
-      $("next-step").hidden = !result.checks.canExport;
     });
 }
-$("request-followup").onclick = () =>
-  void run(async () => {
-    if (!$<HTMLInputElement>("followup").checked) {
-      throw new Error("Select the contact request checkbox first.");
-    }
-    const started = epoch;
-    await api("followup");
-    if (started !== epoch) return;
-    $("followup-status").textContent =
-      "Your request is saved. Our team will be in touch.";
-    $("request-followup").toggleAttribute("disabled", true);
-  });
 window.addEventListener("beforeunload", (e) => {
   if (dirty) {
     e.preventDefault();
