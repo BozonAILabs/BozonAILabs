@@ -346,7 +346,7 @@ test("partial results keep rows, label workbook and offer a workflow contact lin
   await expect(page.locator("#xero")).toBeEnabled();
   await expect(page.locator("#completed-title")).toHaveText("Extraction completed");
   await expect(page.locator("#share-statement, #request-help, #followup, #request-followup")).toHaveCount(0);
-  await expect(page.locator("#workflow-contact a")).toHaveAttribute("href", /mailto:dev@bozonailabs.com\?subject=Statement%20conversion/);
+  await expect(page.locator("#workflow-contact a")).toHaveAttribute("href", /mailto:dev@bozonailabs.com\?subject=Workflow%20enquiry%20%E2%80%94%20Bank%20statement%20converter/);
   const download = page.waitForEvent("download");
   await page.getByRole("button", {name:"Download Excel"}).click();
   const file = await download;

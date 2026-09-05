@@ -37,7 +37,7 @@ FORM: approved sequential flow leading to a full-width split source/table review
       /></a>
       <nav aria-label="Main">
         <a href="/">Our approach</a
-        ><a href="mailto:dev@bozonailabs.com">Let’s talk ↗</a>
+        ><a data-contact="converter" href="mailto:dev@bozonailabs.com">Let’s talk ↗</a>
       </nav>
     </header>
     <main id="main" class="wrap converter">
@@ -50,7 +50,7 @@ FORM: approved sequential flow leading to a full-width split source/table review
             or Xero CSV. Review the rows, then download.
           </p>
           <p class="workflow-link">
-            We can <a href="mailto:dev@bozonailabs.com?subject=Statement%20conversion%20in%20our%20accounting%20workflow&amp;body=Hi%20Bozon%2C%0A%0AI%E2%80%99d%20like%20to%20discuss%20building%20statement%20conversion%20into%20our%20practice%E2%80%99s%20accounting%20workflow.%0A%0A">build this into your workflow</a>.
+            We can <a data-contact="converter" href="mailto:dev@bozonailabs.com">build this into your workflow</a>.
           </p>
         </div>
         <section id="workbench" class="workbench" aria-labelledby="work-title">
@@ -89,7 +89,7 @@ FORM: approved sequential flow leading to a full-width split source/table review
             <p>Contact us to make this part of your practice workflow.</p>
             <a
               class="action"
-              href="mailto:dev@bozonailabs.com?subject=Workflow%20review"
+              data-contact="converter" href="mailto:dev@bozonailabs.com"
               >Contact us ↗</a
             >
           </div>
@@ -178,7 +178,7 @@ FORM: approved sequential flow leading to a full-width split source/table review
       <section id="workflow-contact" class="workflow-contact" hidden aria-labelledby="workflow-contact-title">
         <h2 id="workflow-contact-title">Make this part of your accounting workflow.</h2>
         <p>We can build statement conversion into the way your practice already works.</p>
-        <a class="action" href="mailto:dev@bozonailabs.com?subject=Statement%20conversion%20in%20our%20accounting%20workflow&amp;body=Hi%20Bozon%2C%0A%0AI%E2%80%99d%20like%20to%20discuss%20building%20statement%20conversion%20into%20our%20practice%E2%80%99s%20accounting%20workflow.%0A%0A">Contact us ↗</a>
+        <a class="action" data-contact="converter" href="mailto:dev@bozonailabs.com">Contact us ↗</a>
       </section>
       <section class="tool-notes">
         <h2>Less rekeying.<br />More reviewing.</h2>
@@ -198,7 +198,7 @@ FORM: approved sequential flow leading to a full-width split source/table review
           <h3>Built into your workflow.</h3>
           <p>
             We connect statement conversion to the tools your team already uses.
-            <a href="mailto:dev@bozonailabs.com?subject=Statement%20conversion%20in%20our%20accounting%20workflow&amp;body=Hi%20Bozon%2C%0A%0AI%E2%80%99d%20like%20to%20discuss%20building%20statement%20conversion%20into%20our%20practice%E2%80%99s%20accounting%20workflow.%0A%0A">See how we help ↗</a>
+            <a data-contact="converter" href="mailto:dev@bozonailabs.com">See how we help ↗</a>
           </p>
         </div>
       </section>
@@ -214,9 +214,10 @@ FORM: approved sequential flow leading to a full-width split source/table review
       </dialog>
     </main>
     <footer class="footer wrap">
-      <a href="/#contact">Contact us ↗</a>
+      <a data-contact="converter" href="mailto:dev@bozonailabs.com">Contact us ↗</a>
       <div><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></div>
     </footer>
     <script type="module" src="/src/converter.ts"></script>
+    <script src="/contact-links.js" defer></script>
   </body>
 </html>
