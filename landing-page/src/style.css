@@ -692,6 +692,10 @@ p {
 .text-link:hover {
   color: #467b51;
 }
+.workflow-copy > .converter-invitation {
+  margin-top: 12px;
+  font-size: var(--text-caption);
+}
 .workflow-visual {
   min-height: 410px;
   background: var(--soft);
@@ -1135,6 +1139,9 @@ p {
 }
 .footer-top > a:last-child > span {
   margin-left: 18px;
+}
+.tool-footer-link {
+  margin-top: 28px;
 }
 .footer-bottom {
   display: flex;

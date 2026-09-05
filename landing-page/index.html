@@ -258,9 +258,10 @@
               <span>With a better workflow</span>
               <p>Review what needs your attention.</p>
             </div>
-            <a class="text-link" href="#contact"
-              >Talk about your workflow <span aria-hidden="true">↗</span></a
+            <a class="text-link" href="/tools/bank-statement-converter"
+              >Try the bank statement converter <span aria-hidden="true">↗</span></a
             >
+            <p class="converter-invitation">See what we extract from your bank statement PDF.</p>
           </div>
           <div class="workflow-visual">
             <div class="paper">
@@ -559,7 +560,7 @@
           <a
             class="button"
             id="contact-email"
-            href="mailto:dev@bozonailabs.com?subject=Let%E2%80%99s%20review%20our%20practice%20workflow&amp;body=Hi%20Bozon%2C%0A%0AI%E2%80%99d%20like%20to%20arrange%20a%2020-minute%20workflow%20review.%0A%0APractice%3A%20%0AThe%20workflow%20slowing%20us%20down%3A%20%0A%0ABest%20times%20to%20talk%3A%20"
+            data-contact="general" href="mailto:dev@bozonailabs.com"
             >Book a workflow review <span aria-hidden="true">↗</span></a
           ><span class="micro">Arrange a time by email.</span>
         </div>
@@ -615,8 +616,8 @@
       <div class="footer-top">
         <a class="brand" href="/" aria-label="Bozon AI Labs home"
           ><img src="/bozon-logo.png" alt="" width="28" height="28" /></a
-        ><a href="mailto:dev@bozonailabs.com"
-          >dev@bozonailabs.com <span aria-hidden="true">↗</span></a
+        ><a data-contact="general" href="mailto:dev@bozonailabs.com"
+          >Contact us <span aria-hidden="true">↗</span></a
         >
       </div>
       <p class="tool-footer-link"><a href="/tools/bank-statement-converter">Bank statement converter ↗</a></p>
@@ -628,5 +629,6 @@
       </div>
     </footer>
     <script type="module" src="/src/main.ts"></script>
+    <script src="/contact-links.js" defer></script>
   </body>
 </html>
