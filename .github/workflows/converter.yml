@@ -1,0 +1,44 @@
+name: Converter checks
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: landing-page/package-lock.json
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.105.0
+      - run: npm ci --prefix landing-page
+      - run: cd landing-page && npx playwright install --with-deps chromium
+      - run: ./scripts/check.sh
+      - run: supabase start -x logflare,vector,realtime,imgproxy,studio > /tmp/supabase-start.log 2>&1
+      - name: Database invariants
+        run: cat supabase/tests/converter.sql | docker exec -i supabase_db_BozonAILabs psql -U postgres -d postgres
+      - run: supabase db advisors --local --type security --level warn --fail-on error
+      - name: Serve local API
+        run: |
+          cat > /tmp/functions.env <<'ENV'
+          ALLOW_LOCAL_TEST_AUTH=true
+          CONVERTER_WORKER_TOKEN=local-test-worker
+          MISTRAL_API_KEY=local-placeholder-do-not-call-provider
+          ENV
+          supabase functions serve --env-file /tmp/functions.env > /tmp/functions.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl -fsS -X POST 'http://127.0.0.1:56321/functions/v1/converter-api?action=capabilities' > /dev/null; then break; fi
+            sleep 2
+          done
+      - run: python3 scripts/test-local-api.py
