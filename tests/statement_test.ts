@@ -1,9 +1,11 @@
 import { assertEquals, assertRejects, assertThrows } from '@std/assert';
 import {
   checkStatement,
+  isIncomplete,
   pence,
   spreadsheetText,
   type Statement,
+  transactionEdits,
   xeroCsv,
 } from '../shared/statement.ts';
 import {
@@ -47,16 +49,16 @@ Deno.test('valid arithmetic and CSV match independent expected values', () => {
     '*Date,*Amount,Description\r\n"02/01/2026","100.00","Invoice 1"\r\n"03/01/2026","-102.00","Rent"\r\n',
   ]);
 });
-Deno.test('missing transaction and running balance mismatch block Xero', () => {
+Deno.test('balance diagnostics do not block downloads or imply incomplete extraction', () => {
   const s = structuredClone(sample);
   s.transactions.pop();
   assertEquals(checkStatement(s).balance, 'mismatch');
-  assertThrows(() => xeroCsv(s));
+  assertEquals(xeroCsv(s).length, 1);
   s.closing = 110000;
   s.transactions[0].balance = 0;
   assertEquals(checkStatement(s).canExport, false);
 });
-Deno.test('invalid dates, null amounts and unsupported currency block', () => {
+Deno.test('invalid or missing values are retained in downloadable CSV', () => {
   for (const date of ['2026-02-30', '01/02/26', '']) {
     const s = structuredClone(sample);
     s.transactions[0].date = date;
@@ -64,16 +66,16 @@ Deno.test('invalid dates, null amounts and unsupported currency block', () => {
   }
   const s = structuredClone(sample);
   s.transactions[0].amount = null;
-  assertThrows(() => xeroCsv(s));
+  assertEquals(xeroCsv(s).length, 1);
   s.currency = 'EUR';
   assertEquals(checkStatement(s).issues.some((i) => i.code === 'unsupported'), true);
 });
-Deno.test('balance unavailable requires explicit acknowledgement', () => {
+Deno.test('balance unavailable does not require acknowledgement', () => {
   const s = structuredClone(sample);
   s.opening = null;
   s.closing = null;
-  assertThrows(() => xeroCsv(s));
-  assertEquals(xeroCsv(s, true).length, 1);
+  assertEquals(xeroCsv(s).length, 1);
+  assertEquals(xeroCsv(s).length, 1);
 });
 Deno.test('duplicates stay visible and are never silently removed', () => {
   const s = structuredClone(sample);
@@ -245,7 +247,7 @@ const annotation = () => ({
     balance: String(t.balance! / 100),
   })),
 });
-Deno.test('unknown bank layouts are accepted; partial rows remain reviewable and block import', async () => {
+Deno.test('unknown bank layouts are accepted; partial rows remain reviewable and downloadable', async () => {
   const original = globalThis.fetch;
   try {
     const raw = { ...annotation(), bank: 'Unfamiliar Community Bank' };
@@ -259,7 +261,7 @@ Deno.test('unknown bank layouts are accepted; partial rows remain reviewable and
     assertEquals(partial.transactions.length, 2);
     assertEquals(checkStatement(partial).balance, 'matches');
     assertEquals(checkStatement(partial).canExport, false);
-    assertThrows(() => xeroCsv(partial, true));
+    assertEquals(xeroCsv(partial).length, 1);
   } finally {
     globalThis.fetch = original;
   }
@@ -321,4 +323,34 @@ Deno.test('unreadable row fields override an overconfident completeness flag', a
   } finally {
     globalThis.fetch = original;
   }
+});
+
+Deno.test('incomplete means missing extraction data, not balance or date-range anomalies', () => {
+  const s = structuredClone(sample);
+  s.closing = 0;
+  s.transactions[0].date = '2025-12-01';
+  s.transactions.push({ ...s.transactions[0] });
+  assertEquals(isIncomplete(s), false);
+  s.transactions[0].amount = null;
+  assertEquals(isIncomplete(s), true);
+  const csv = xeroCsv(s)[0];
+  assertEquals(csv.includes('"01/12/2025","","Invoice 1"'), true);
+  assertEquals(csv.split('\r\n').length, 5);
+  s.transactions[0].date = '';
+  assertEquals(xeroCsv(s)[0].includes('"","","Invoice 1"'), true);
+});
+Deno.test('download edits preserve source metadata and leave saved values untouched', () => {
+  const proposed = structuredClone(sample);
+  proposed.bank = 'changed';
+  proposed.transactions[0].page = 20;
+  proposed.transactions[0].description = 'Visible edit';
+  proposed.transactions[0].amount = null;
+  const result = transactionEdits(sample, proposed);
+  assertEquals(result.bank, sample.bank);
+  assertEquals(result.transactions[0].page, 1);
+  assertEquals(result.transactions[0].description, 'Visible edit');
+  assertEquals(sample.transactions[0].description, 'Invoice 1');
+  assertEquals(xeroCsv(result)[0].includes('"","Visible edit"'), true);
+  proposed.transactions.pop();
+  assertThrows(() => transactionEdits(sample, proposed));
 });
