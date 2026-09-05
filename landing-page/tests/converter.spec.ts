@@ -246,8 +246,11 @@ test("edits during save remain unsaved", async ({ page }) => {
 test("late financial response cannot restore content after sign-out", async ({ page }) => {
   await setup(page, { delayedGet: true });
   await page.getByRole("button", { name: /Ready to review/ }).click();
-  page.on("dialog", (dialog) => dialog.accept());
-  await page.getByRole("button", { name: "End session" }).click();
+  await page.evaluate(async () => {
+    const modulePath = "/src/converter-client.ts";
+    const { client } = await import(modulePath);
+    await client.auth.signOut();
+  });
   await expect(
     page.getByRole("button", { name: "Continue to converter" }),
   ).toBeVisible();

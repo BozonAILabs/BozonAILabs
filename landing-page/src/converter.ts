@@ -147,7 +147,6 @@ async function account(autoOpen = true) {
     request = ++accountRequest;
   const a = await api("account");
   if (started !== epoch || request !== accountRequest) return;
-  $("signout").hidden = false;
   $("recent").hidden = !a.jobs.length;
   $("job-list").replaceChildren();
   for (const j of a.jobs) {
@@ -290,24 +289,8 @@ function signedOut() {
   clearReview();
   $("recent").hidden = true;
   $("job-list").replaceChildren();
-  $("signout").hidden = true;
   stage("profile");
 }
-$("signout").onclick = () =>
-  void run(async () => {
-    if (
-      !confirm(
-        "End this private session? You won’t be able to reopen its results afterward.",
-      )
-    ) return;
-    signedOut();
-    $<HTMLFormElement>("profile").reset();
-    const { error: signoutError } = await client!.auth.signOut();
-    if (signoutError) {
-      $("signout").hidden = false;
-      error(new Error("Ending the session could not be completed. Please retry."));
-    }
-  });
 $<HTMLFormElement>("profile").onsubmit = (e) => {
   e.preventDefault();
   const form = e.currentTarget as HTMLFormElement;
