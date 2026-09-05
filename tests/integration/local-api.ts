@@ -36,7 +36,7 @@ const call = async (
   };
 };
 try {
-  await admin.from('converter_settings').update({ enabled: true, validated_banks: ['NatWest'] }).eq(
+  await admin.from('converter_settings').update({ enabled: true }).eq(
     'id',
     true,
   );
@@ -47,7 +47,10 @@ try {
     const data = { user: session.user! };
     users.push({ id: data.user.id, token: session.session!.access_token, client });
     assertEquals((await call(i, 'create')).data.error, 'PROFILE_REQUIRED');
-    assertEquals((await call(i, 'profile', {name:'Test',practice:'Test',email:'invalid'})).status, 400);
+    assertEquals(
+      (await call(i, 'profile', { name: 'Test', practice: 'Test', email: 'invalid' })).status,
+      400,
+    );
     assertEquals(
       (await call(i, 'profile', {
         name: 'Test',
@@ -123,10 +126,99 @@ try {
   assertEquals(reused.data.id, jid);
   assertEquals(reused.data.reused, true);
   assertEquals((await call(0, 'followup')).status, 200);
+  assertEquals((await call(1, 'help', { id: jid, share_statement: false })).status, 404);
+  assertEquals((await call(0, 'help', { id: jid })).status, 400);
+  assertEquals(
+    (await call(0, 'help', { id: jid, share_statement: false })).data.share_statement,
+    false,
+  );
+  assertEquals(
+    (await call(0, 'help', { id: jid, share_statement: true })).data.share_statement,
+    true,
+  );
+  const { data: hiddenHelp } = await users[1].client.from('converter_help_requests').select('*');
+  assertEquals(hiddenHelp, []);
+  const { data: ownHelp } = await users[0].client.from('converter_help_requests').select('*');
+  assertEquals(ownHelp?.length, 1);
+  const { error: directHelp } = await users[0].client.from('converter_help_requests').insert({
+    user_id: users[0].id,
+    job_id: jid,
+  });
+  assert(directHelp);
+  // A client cannot remove immutable extraction warnings to bypass Xero checks.
+  const partial = {
+    ...edited,
+    bank: 'Unfamiliar Bank',
+    extraction: { complete: false, unreadablePages: [1], uncertainPages: [] },
+  };
+  await admin.from('conversion_content').update({ corrected: partial, original: partial }).eq(
+    'job_id',
+    jid,
+  );
+  assertEquals(
+    (await call(0, 'edit', { id: jid, revision: 1, statement: edited })).data.checks.canExport,
+    false,
+  );
+  assertEquals(
+    (await call(0, 'export', { id: jid, revision: 2, format: 'xero', acknowledged: true })).data
+      .error,
+    'REVIEW_REQUIRED',
+  );
+  assertEquals(
+    (await call(0, 'export', { id: jid, revision: 2, format: 'excel' })).data.statement.extraction
+      .complete,
+    false,
+  );
+
   assertEquals((await call(0, 'delete', { id: jid })).status, 200);
   assertEquals((await call(0, 'source', { id: jid })).status, 400);
   const { data: content } = await admin.from('conversion_content').select('*').eq('job_id', jid);
   assertEquals(content, []);
+  const { data: revoked } = await admin.from('converter_help_requests').select(
+    'share_statement,statement_access_until',
+  ).eq('job_id', jid).single();
+  assertEquals(revoked, { share_statement: false, statement_access_until: null });
+  assertEquals((await call(0, 'help', { id: jid, share_statement: true })).status, 400);
+  // Terminal document rejection respects leases and releases quota exactly once.
+  const failure = await call(1, 'create');
+  await call(1, 'upload', {}, bytes, failure.data.id);
+  let lease;
+  for (let i = 0; i < 5; i++) {
+    const result = await admin.rpc('converter_claim');
+    if (result.error) throw result.error;
+    if (result.data?.id === failure.data.id) {
+      lease = result.data;
+      break;
+    }
+  }
+  assert(lease);
+  const reject = (token: string) =>
+    admin.rpc('converter_reject', {
+      jid: failure.data.id,
+      token,
+      mid: lease.msg_id,
+      reason: 'UNSUPPORTED_CURRENCY',
+    });
+  assertEquals((await reject(crypto.randomUUID())).data, false);
+  assertEquals((await reject(lease.lease)).data, true);
+  assertEquals((await reject(lease.lease)).data, false);
+  assertEquals((await call(1, 'account')).data.remaining, 50);
+  assertEquals(
+    (await call(1, 'get', { id: failure.data.id })).data.error_code,
+    'UNSUPPORTED_CURRENCY',
+  );
+  assertEquals((await call(1, 'help', { id: failure.data.id, share_statement: true })).status, 200);
+  const sweep = await admin.rpc('converter_cleanup');
+  assert(!sweep.data.some((j: { id: string }) => j.id === failure.data.id));
+  assertEquals((await call(1, 'source', { id: failure.data.id })).status, 200);
+  await admin.from('conversions').update({ expires_at: new Date(Date.now() - 1000).toISOString() })
+    .eq('id', failure.data.id);
+  assertEquals((await call(1, 'help', { id: failure.data.id, share_statement: true })).status, 400);
+  await admin.rpc('converter_cleanup');
+  const { data: expiredHelp } = await admin.from('converter_help_requests').select(
+    'share_statement',
+  ).eq('job_id', failure.data.id).single();
+  assertEquals(expiredHelp?.share_statement, false);
   const worker = await fetch(`${url}/functions/v1/converter-worker`, {
     method: 'POST',
     headers: { apikey: anon, Authorization: `Bearer ${users[0].token}` },
@@ -134,7 +226,7 @@ try {
   assertEquals(worker.status, 401);
   await worker.text();
   console.log(
-    'Local API integration passed: concurrent create, two-user isolation, PDF upload, duplicate rejection/reuse, quota, edits, export, deletion and worker auth.',
+    'Local API integration passed: concurrent create, two-user isolation, PDF upload, duplicate rejection/reuse, quota, immutable partial warnings, help consent/isolation/revocation, terminal rejection leases, exports, deletion and worker auth.',
   );
 } finally {
   for (const u of users) {
@@ -145,7 +237,7 @@ try {
     if (jobs?.length) await admin.storage.from('statements').remove(jobs.map((j) => j.object_path));
     await admin.auth.admin.deleteUser(u.id);
   }
-  await admin.from('converter_settings').update({ enabled: false, validated_banks: [] }).eq(
+  await admin.from('converter_settings').update({ enabled: false }).eq(
     'id',
     true,
   );

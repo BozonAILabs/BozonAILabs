@@ -32,7 +32,9 @@ Deno.serve(async (req) => {
         enabled: !error && data?.enabled === true && data?.api_version === API_VERSION &&
           !!Deno.env.get('MISTRAL_API_KEY') &&
           !!Deno.env.get('CONVERTER_WORKER_TOKEN'),
-        banks: data?.validated_banks ?? [],
+        format_agnostic: true,
+        currency: 'GBP',
+        language: 'English',
       });
     }
     const actor = await user(req);
@@ -116,6 +118,12 @@ Deno.serve(async (req) => {
     if (typeof body.id !== 'string' || !/^[0-9a-f-]{36}$/i.test(body.id)) {
       throw new AppError('NOT_FOUND');
     }
+    if (action === 'help') {
+      if (typeof body.share_statement !== 'boolean') throw new AppError('INVALID_CONSENT');
+      return json(
+        await command('help', actor.id, body.id, { share_statement: body.share_statement }),
+      );
+    }
     if (action === 'get') return json(await command('get', actor.id, body.id));
     if (action === 'delete') {
       const j = await command('delete', actor.id, body.id);
@@ -165,6 +173,11 @@ Deno.serve(async (req) => {
       if (!statement || j.revision !== body.revision) throw new AppError('REVISION', 409);
       assertStatement(statement);
       if (!['excel', 'xero'].includes(body.format)) throw new AppError('FORMAT');
+      const checks = checkStatement(statement);
+      if (
+        body.format === 'xero' && (!checks.canExport ||
+          (checks.balance === 'unavailable' && body.acknowledged !== true))
+      ) throw new AppError('REVIEW_REQUIRED');
       const files = body.format === 'xero' ? xeroCsv(statement, body.acknowledged === true) : null;
       await command('export', actor.id, body.id, { format: body.format });
       return json({ statement, checks: checkStatement(statement), files });

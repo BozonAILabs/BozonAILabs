@@ -57,6 +57,8 @@ export async function api(
 const messages: Record<string, string> = {
   SIGN_IN: "Your session has expired. Please enter your details to continue.",
   UNAVAILABLE: "The converter is not available yet.",
+  INVALID_CONSENT: "Choose whether you want to share the statement with our team.",
+  REVIEW_REQUIRED: "This result needs attention. Review the highlighted issues or request help before importing to Xero.",
   ALLOWANCE: "This statement exceeds your remaining free pages.",
   ACTIVE_JOB: "You already have a conversion running. Open it below.",
   RATE_LIMIT: "Too many uploads. Please try again in an hour.",

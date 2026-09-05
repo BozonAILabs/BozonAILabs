@@ -379,3 +379,9 @@ iframe:focus-visible {
 #profile h3 {
   font: 400 1.625rem/1.2 var(--serif);
 }
+
+.statement-help { margin-top: 36px; padding: 32px; background: var(--soft); border: 1px solid var(--rule); border-radius: 8px; }
+.statement-help h2 { font: 400 clamp(2rem, 3vw, 3rem)/1.15 var(--serif); }
+.statement-help p { margin: 18px 0; max-width: 65ch; }
+.statement-help label { display: block; margin-top: 24px; }
+#result-status { max-width: 50ch; }

@@ -5,7 +5,7 @@ description: Implement, extend, configure and verify Bozon AI Labs' bank stateme
 
 # Deliver a working converter
 
-The outcome is an accountant entering their details, submitting a real supported PDF, reviewing extracted transactions and downloading a usable file. A landing page, mocked review, passing isolated tests or disabled feature flag does not fulfill an implementation request.
+The outcome is an accountant entering their details, submitting a real in-scope PDF, reviewing extracted transactions and downloading a usable file. A landing page, mocked review, passing isolated tests or disabled feature flag does not fulfill an implementation request.
 
 Resolve paths from this repository root, not the skill directory. Read `docs/bank-statement-converter.md` for setup and current limits. Use the existing Supabase skill for product documentation and the Postgres skill before database changes.
 
@@ -15,9 +15,9 @@ Resolve paths from this repository root, not the skill directory. Read `docs/ban
 - Email is self-reported contact information. Never use it to look up or restore another session's files. Distinct sessions entering the same email must remain isolated by `auth.uid()`.
 - Preserve sessions across reloads. Ending the session or clearing browser data loses result access. The 50-page allowance belongs to the private browser identity and can be reset by clearing it; do not describe it as an enforced lifetime-per-person limit.
 - Contact details do not constitute a sales follow-up request; retain the separate optional checkbox.
-- Upload one PDF, one account/statement, English GBP current-account scope. Enforce 10 MB, 20 pages, 50 free pages per private browser identity and one active conversion server-side. Display the configured bank scope without claiming every bank format is validated.
+- Upload one PDF, one account/statement, English GBP current-account scope. Enforce 10 MB, 20 pages, 50 free pages per private browser identity and one active conversion server-side. Accept unfamiliar bank names; the document scope is one English GBP current-account statement, not a bank-name allowlist.
 - Show progress, resume recent jobs, then display the source beside editable dates, descriptions and signed amounts. Preserve original extraction and page references.
-- Save corrections with a revision check. Download an actual Excel workbook or Xero CSV; split large CSVs. Retain balance checks, ambiguity flags and review requirements.
+- Save corrections with a revision check. Download an actual Excel workbook or Xero CSV; split large CSVs. Retain balance checks, ambiguity flags and review requirements. Keep readable partial results with immutable extraction-quality/page warnings; label partial Excel files and block Xero for unresolved extraction issues.
 - Sign-out clears financial UI state. Deletion and 24-hour expiry remove access immediately; scheduled cleanup handles active storage. Do not promise removal from provider systems or backups without evidence.
 
 ## Architecture to preserve
@@ -58,3 +58,12 @@ For another use case, consume the canonical statement through ownership-checked 
 - `VITE_CONVERTER_ENABLED=false` is an emergency off switch, not a default requirement for manually launching every environment.
 - `LOCAL_MANUAL_WORKER` is a localhost-only test control. Manual worker mode is for API invariant tests that inject checkpoints; disable it for real full-flow verification.
 - Synthetic successful extraction is evidence of a functioning pipeline, not proof of accuracy across every real bank layout. Record the scope and evidence separately.
+
+## Partial results and help
+
+- Unknown bank names are accepted. Never reintroduce an allowlist as an accuracy substitute. Keep single-account, English-language, single-currency GBP scope. Original foreign purchase amounts are not the booked GBP debit/credit.
+- `extraction.complete`, unreadable pages and uncertain pages are immutable source-quality metadata. A balanced partial result still blocks Xero. Preserve usable rows; never fabricate missing transactions. Terminal scope failures or zero rows show help without finished output.
+- Help requests use the authenticated visitor and conversion reference plus existing contact details. Document sharing is an explicit, unchecked-by-default choice; no file is attached automatically. Save requests in Supabase for manual follow-up, never claim an email was sent.
+- Repeated requests update consent idempotently. Deletion and expiry revoke sharing. Failed PDFs keep the existing 24-hour expiry so the visitor can request help; no extra retention/copy is created.
+- Operator access requires current sharing consent, a live request access window, a live conversion expiry and non-deleted/non-expired state. Follow the runbook; do not treat a historical consent flag alone as access permission.
+- Run the complete, partial and unsupported live scenarios and API tests for help ownership, consent revocation and immutable export restrictions.

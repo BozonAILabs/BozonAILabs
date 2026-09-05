@@ -139,7 +139,8 @@ Deno.test('chunk merge keeps order, detects multiple accounts and gaps', () => {
   second.from = 7;
   assertThrows(() => combine([first, second], 8));
   first.complete = false;
-  assertThrows(() => combine([first], 6));
+  assertEquals(combine([first], 6).extraction?.complete, false);
+  assertEquals(checkStatement(combine([first], 6)).canExport, false);
 });
 Deno.test('OCR sends bounded pages, lookahead and pinned model; excludes lookahead rows', async () => {
   const original = globalThis.fetch;
@@ -147,12 +148,16 @@ Deno.test('OCR sends bounded pages, lookahead and pinned model; excludes lookahe
   globalThis.fetch = async (_input, init) => {
     sent = JSON.parse(init!.body as string);
     return Response.json({
+      pages: Array.from({ length: 7 }, (_, index) => ({ index })),
       document_annotation: JSON.stringify({
         ...sample,
         opening: '1000.00',
         closing: '998.00',
         supported: true,
         complete: true,
+        ledger_currencies: ['GBP'],
+        unreadable_pages: [],
+        uncertain_pages: [],
         transactions: [
           { ...sample.transactions[0], amount: '100.00', balance: '1100.00', page: 6 },
           { ...sample.transactions[1], amount: '-102.00', balance: '998.00', page: 7 },
@@ -189,19 +194,6 @@ Deno.test('encrypted PDFs are rejected without ignoring encryption', async () =>
   );
   await assertRejects(async () => validatePdf(await pdf.save()));
 });
-Deno.test('incomplete or unsupported OCR chunks fail before advancing the checkpoint', async () => {
-  const original = globalThis.fetch;
-  try {
-    for (const flags of [{ complete: false, supported: true }, { complete: true, supported: false }]) {
-      globalThis.fetch = () => Promise.resolve(Response.json({
-        document_annotation: { ...sample, ...flags },
-      }));
-      await assertRejects(() => extract('x', 0, 8, 'x'), Error, 'UNSUPPORTED_OR_INCOMPLETE');
-    }
-  } finally {
-    globalThis.fetch = original;
-  }
-});
 Deno.test('large exact integer totals cannot overflow into a false balance pass', () => {
   const s = structuredClone(sample);
   s.opening = 0;
@@ -236,4 +228,97 @@ Deno.test('large exact integer totals cannot overflow into a false balance pass'
     page: 1,
   });
   assertEquals(checkStatement(s).balance, 'mismatch');
+});
+
+const annotation = () => ({
+  ...sample,
+  opening: '1000.00',
+  closing: '998.00',
+  supported: true,
+  complete: true,
+  ledger_currencies: ['GBP'],
+  unreadable_pages: [] as number[],
+  uncertain_pages: [] as number[],
+  transactions: sample.transactions.map((t) => ({
+    ...t,
+    amount: String(t.amount! / 100),
+    balance: String(t.balance! / 100),
+  })),
+});
+Deno.test('unknown bank layouts are accepted; partial rows remain reviewable and block import', async () => {
+  const original = globalThis.fetch;
+  try {
+    const raw = { ...annotation(), bank: 'Unfamiliar Community Bank' };
+    globalThis.fetch = () =>
+      Promise.resolve(Response.json({ pages: [{ index: 0 }], document_annotation: raw }));
+    const full = combine([await extract('x', 0, 1, 'x')], 1);
+    assertEquals(checkStatement(full).canExport, true);
+    raw.complete = false;
+    raw.uncertain_pages = [1];
+    const partial = combine([await extract('x', 0, 1, 'x')], 1);
+    assertEquals(partial.transactions.length, 2);
+    assertEquals(checkStatement(partial).balance, 'matches');
+    assertEquals(checkStatement(partial).canExport, false);
+    assertThrows(() => xeroCsv(partial, true));
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+Deno.test('missing OCR pages are flagged even if the provider claims completeness', async () => {
+  const original = globalThis.fetch;
+  try {
+    globalThis.fetch = () =>
+      Promise.resolve(Response.json({ pages: [{ index: 0 }], document_annotation: annotation() }));
+    const partial = combine([await extract('x', 0, 2, 'x')], 2);
+    assertEquals(partial.extraction?.unreadablePages, [2]);
+    assertEquals(partial.extraction?.complete, false);
+    assertEquals(partial.transactions.length, 2);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+Deno.test('mixed/non-GBP ledgers and unsupported documents cannot become exports', async () => {
+  const original = globalThis.fetch;
+  try {
+    for (
+      const patch of [{ ledger_currencies: ['GBP', 'EUR'] }, { currency: 'USD' }, {
+        supported: false,
+      }]
+    ) {
+      globalThis.fetch = () =>
+        Promise.resolve(
+          Response.json({
+            pages: [{ index: 0 }],
+            document_annotation: { ...annotation(), ...patch },
+          }),
+        );
+      await assertRejects(() => extract('x', 0, 1, 'x'));
+    }
+    const s = structuredClone(sample);
+    s.transactions = [];
+    assertThrows(
+      () => combine([{ statement: s, from: 0, through: 1, complete: false, supported: true }], 1),
+      Error,
+      'NO_TRANSACTIONS',
+    );
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+Deno.test('unreadable row fields override an overconfident completeness flag', async () => {
+  const original = globalThis.fetch;
+  try {
+    const raw = annotation();
+    raw.transactions[0].amount = 'unreadable';
+    globalThis.fetch = () =>
+      Promise.resolve(Response.json({ pages: [{ index: 0 }], document_annotation: raw }));
+    const result = combine([await extract('x', 0, 1, 'x')], 1);
+    assertEquals(result.extraction?.complete, false);
+    assertEquals(result.extraction?.uncertainPages, [1]);
+    assertEquals(result.transactions[0].amount, null);
+    assertEquals(checkStatement(result).canExport, false);
+  } finally {
+    globalThis.fetch = original;
+  }
 });

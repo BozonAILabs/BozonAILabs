@@ -1,8 +1,12 @@
 /** Shared contract for conversion, future completeness and transaction comparison. */
-export const ENGINE_VERSION = '1.0.0';
-export const API_VERSION = 1;
+export const ENGINE_VERSION = '1.1.0';
+export const API_VERSION = 2;
 export const MODEL = 'mistral-ocr-4-0';
-export const BANKS = ['Barclays', 'HSBC', 'Lloyds', 'NatWest', 'Monzo'] as const;
+export interface ExtractionQuality {
+  complete: boolean;
+  unreadablePages: number[];
+  uncertainPages: number[];
+}
 export interface Transaction {
   date: string;
   description: string;
@@ -11,6 +15,7 @@ export interface Transaction {
   page: number;
 }
 export interface Statement {
+  extraction?: ExtractionQuality;
   bank: string;
   currency: string;
   account: string;
@@ -66,6 +71,15 @@ export function assertStatement(value: unknown): asserts value is Statement {
     }
   }
   if (
+    s.extraction !== undefined && (
+      !s.extraction || typeof s.extraction.complete !== 'boolean' ||
+      ![s.extraction.unreadablePages, s.extraction.uncertainPages].every((pages) =>
+        Array.isArray(pages) && pages.length <= 20 &&
+        pages.every((p) => Number.isInteger(p) && p >= 1 && p <= 20)
+      )
+    )
+  ) throw new Error('Invalid extraction quality');
+  if (
     !Array.isArray(s.transactions) || s.transactions.length > 10000 ||
     ![s.opening, s.closing].every((v) => v === null || isMoney(v))
   ) throw new Error('Invalid statement values');
@@ -83,8 +97,23 @@ export function checkStatement(s: Statement): Checks {
   const issues: Issue[] = [];
   const add = (code: string, message: string, blocking = true, row?: number) =>
     issues.push({ code, message, blocking, ...(row === undefined ? {} : { row }) });
-  if (!(BANKS as readonly string[]).includes(s.bank) || s.currency !== 'GBP') {
-    add('unsupported', 'This bank or currency is not supported.');
+  if (s.currency !== 'GBP') {
+    add('unsupported', 'Only single-currency GBP statements can be imported.');
+  }
+  if (s.extraction?.complete === false) {
+    add(
+      'incomplete_extraction',
+      'Some transactions or details may be missing. This is a partial extraction, even if the balance matches.',
+    );
+  }
+  if (s.extraction?.unreadablePages.length) {
+    add('unreadable_pages', `Could not read pages: ${s.extraction.unreadablePages.join(', ')}.`);
+  }
+  if (s.extraction?.uncertainPages.length) {
+    add(
+      'uncertain_pages',
+      `Check unclear rows on pages: ${s.extraction.uncertainPages.join(', ')}.`,
+    );
   }
   if (!validDate(s.start) || !validDate(s.end) || s.start > s.end) {
     add('period', 'Review the statement period.');

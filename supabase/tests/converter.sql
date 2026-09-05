@@ -2,7 +2,7 @@
 begin;
 create function pg_temp.ok(condition boolean, message text) returns void language plpgsql as $$begin if condition is distinct from true then raise exception 'Assertion failed: %',message; end if; end$$;
 insert into auth.users(id,email) values('11111111-1111-4111-8111-111111111111','one@example.test'),('22222222-2222-4222-8222-222222222222','two@example.test');
-update public.converter_settings set enabled=true,validated_banks=array['NatWest'];
+update public.converter_settings set enabled=true;
 select public.converter_command('profile','11111111-1111-4111-8111-111111111111',null,'{"name":"One","practice":"Test","email":"shared@example.test"}');
 select public.converter_command('profile','22222222-2222-4222-8222-222222222222',null,'{"name":"Two","practice":"Test","email":"shared@example.test"}');
 select pg_temp.ok(not has_function_privilege('authenticated','public.converter_command(text,uuid,uuid,jsonb)','execute'),'user cannot spoof service RPC identity');

@@ -70,10 +70,18 @@ function clearReview() {
   $("review").hidden = true;
   $("rows").replaceChildren();
   $("next-step").hidden = true;
+  $("statement-help").hidden = true;
+  $("help-status").textContent = "";
 }
 function check() {
   if (!draft) return;
   const checks = checkStatement(draft);
+  const partial = draft.extraction?.complete === false;
+  $("result-status").textContent = partial
+    ? "Partial result — some transactions or details may be missing."
+    : checks.canExport ? "Ready for your review." : "Needs attention — check the highlighted issues.";
+  $("excel").textContent = partial ? "Download partial Excel" : "Download Excel";
+  $("statement-help").hidden = checks.canExport;
   const title = document.createElement("strong");
   title.textContent = {
     matches: "Balance matches",
@@ -89,7 +97,7 @@ function check() {
     list.append(li);
   }
   $("checks").replaceChildren(title, list);
-  $("ack-wrap").hidden = checks.balance !== "unavailable";
+  $("ack-wrap").hidden = checks.balance !== "unavailable" || !checks.canExport;
   $("xero").toggleAttribute(
     "disabled",
     dirty ||
@@ -197,6 +205,7 @@ async function open(id: string, retry = 0) {
     },
     Math.max(0, Date.parse(job.expires_at) - Date.now()),
   );
+  prepareHelp(job);
   if (job.state === "review") {
     draft = structuredClone(job.content.corrected);
     $("review").hidden = false;
@@ -226,11 +235,8 @@ async function open(id: string, retry = 0) {
   } else if (job.state === "failed") {
     await account(false);
     if (current()) {
-      error(
-        new Error(
-          "We couldn’t read this statement reliably. Your pages have been returned. Try a clearer PDF, or contact us for help.",
-        ),
-      );
+      $("statement-help").hidden = false;
+      $("statement-help").scrollIntoView({ block: "start" });
     }
   } else if (["queued", "processing", "uploading"].includes(job.state)) {
     stage("progress");
@@ -240,6 +246,44 @@ async function open(id: string, retry = 0) {
     timer = window.setTimeout(() => void run(() => open(id)), 5000);
   }
 }
+function prepareHelp(job: any) {
+  const failures: Record<string, string> = {
+    UNSUPPORTED_STATEMENT: "We couldn’t identify one English-language GBP account statement. Try a single-account statement or request help.",
+    UNSUPPORTED_CURRENCY: "This statement contains a non-GBP or mixed-currency ledger. Try a GBP-only statement or request help.",
+    INCONSISTENT_STATEMENT: "Account details or balances conflict between pages. We haven’t combined them into a spreadsheet.",
+    NO_TRANSACTIONS: "We couldn’t extract any usable transaction rows from this statement.",
+  };
+  $("help-message").textContent = job.state === "failed"
+    ? (failures[job.error_code] ?? "We couldn’t read this statement reliably.") + " Your pages have been returned."
+    : "Need help with the highlighted issues?";
+  const share = $<HTMLInputElement>("share-statement");
+  share.checked = job.help?.share_statement === true;
+  share.disabled = job.storage_deleted || !job.pages;
+  if (share.disabled) share.checked = false;
+  $("sharing-note").textContent = share.disabled
+    ? "The source file is unavailable. You can still request help."
+    : "Optional. Access ends when you delete the conversion or its 24-hour storage period expires.";
+  $("help-status").textContent = job.help ? "Your request is saved. You can update your sharing choice." : "We’ll use the contact details you already provided.";
+  $("request-help").textContent = job.help ? "Update request" : "Request help";
+  $("request-help").removeAttribute("disabled");
+  $("delete-failed").hidden = job.state !== "failed";
+}
+$("request-help").onclick = () => void run(async () => {
+  if (!active) return;
+  const started = epoch, view = navigation, id = active.id;
+  $("request-help").setAttribute("disabled", "");
+  try {
+    const result = await api("help", { id, share_statement: $<HTMLInputElement>("share-statement").checked });
+    if (started !== epoch || view !== navigation || active?.id !== id) return;
+    active.help = result;
+    $("help-status").textContent = result.share_statement
+      ? "Request saved. Our team can access this statement until it expires or you delete it."
+      : "Request saved. Your statement has not been shared with our team.";
+    $("request-help").textContent = "Update request";
+  } finally {
+    if (started === epoch && view === navigation) $("request-help").removeAttribute("disabled");
+  }
+});
 function signedOut() {
   epoch++;
   accountRequest++;
@@ -322,7 +366,7 @@ $<HTMLFormElement>("upload").onsubmit = (e) => {
     }
   });
 };
-for (const id of ["delete", "cancel"]) {
+for (const id of ["delete", "cancel", "delete-failed"]) {
   $(id).onclick = () =>
     void run(async () => {
       if (!active || !confirm("Delete this statement and its transactions?")) {
@@ -409,7 +453,8 @@ for (const format of ["excel", "xero"]) {
       } else {
         const { default: ExcelJS } = await import("exceljs");
         const book = new ExcelJS.Workbook();
-        const tx = book.addWorksheet("Transactions");
+        const partial = result.statement.extraction?.complete === false;
+        const tx = book.addWorksheet(partial ? "Partial transactions" : "Transactions");
         tx.columns = [
           { header: "Date", key: "date", width: 15 },
           { header: "Description", key: "description", width: 55 },
@@ -437,6 +482,7 @@ for (const format of ["excel", "xero"]) {
             width: 85,
           },
         ];
+        checks.addRow(["Result", partial ? "PARTIAL EXTRACTION — transactions or details may be missing. Not ready for import." : result.checks.canExport ? "Review against source before importing." : "NEEDS ATTENTION — review listed issues before use."]);
         checks.addRow(["Balance", result.checks.balance]);
         checks.addRow([
           "Review",
@@ -455,10 +501,10 @@ for (const format of ["excel", "xero"]) {
             type:
               "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
           }),
-          "statement-review.xlsx",
+          partial ? "statement-partial-review.xlsx" : "statement-review.xlsx",
         );
       }
-      $("next-step").hidden = false;
+      $("next-step").hidden = !result.checks.canExport;
     });
 }
 $("request-followup").onclick = () =>
@@ -491,14 +537,11 @@ void run(async () => {
     return;
   }
   const cap = await api("capabilities");
-  if (!cap.enabled || cap.version !== API_VERSION || !cap.banks.length) {
+  if (!cap.enabled || cap.version !== API_VERSION || !cap.format_agnostic) {
     $("availability").textContent =
       "The converter is not available yet. Please check back soon.";
     return;
   }
-  $("banks").textContent = `Available for ${
-    cap.banks.join(", ")
-  }. English GBP current accounts.`;
   const { data: { session } } = await client!.auth.getSession();
   if (session) {
     $("availability").hidden = true;

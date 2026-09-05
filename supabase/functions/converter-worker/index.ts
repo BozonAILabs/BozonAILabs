@@ -36,9 +36,6 @@ Deno.serve(async (req) => {
     let final = null;
     if (chunk.through === job.pages) {
       final = combine([...(job.chunks as Chunk[]), chunk], job.pages);
-      const { data: settings } = await client.from('converter_settings').select('validated_banks')
-        .single();
-      if (!settings?.validated_banks.includes(final.bank)) throw new Error('UNVALIDATED_BANK');
       checkStatement(final);
     }
     const { error: saveError } = await client.rpc('converter_checkpoint', {
@@ -53,9 +50,21 @@ Deno.serve(async (req) => {
     return Response.json({ processed: true });
   } catch (error) {
     const code = error instanceof AppError ? error.code : error instanceof Error &&
-        ['STORAGE', 'UNVALIDATED_BANK', 'CHECKPOINT'].includes(error.message)
+        ['STORAGE', 'CHECKPOINT'].includes(error.message)
       ? error.message
       : 'PROCESSING_FAILED';
+    if (
+      ['UNSUPPORTED_STATEMENT', 'UNSUPPORTED_CURRENCY', 'INCONSISTENT_STATEMENT', 'NO_TRANSACTIONS']
+        .includes(code)
+    ) {
+      const { error: rejectError } = await client.rpc('converter_reject', {
+        jid: job.id,
+        token: job.lease,
+        mid: job.msg_id,
+        reason: code,
+      });
+      if (!rejectError) return Response.json({ rejected: true });
+    }
     console.error('converter_worker_failed', code);
     // Queue visibility and bounded claim attempts recover this job. Never log document/provider payloads.
     return Response.json({ retry: true }, { status: 503 });

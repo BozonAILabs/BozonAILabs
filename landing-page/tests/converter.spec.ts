@@ -28,6 +28,8 @@ async function setup(
     onboarding = false,
     remaining = 49,
     rejectAllowance = false,
+    partial = false,
+    failed = false,
   } = {},
 ) {
   const user = {
@@ -71,7 +73,8 @@ async function setup(
     deleted = false,
     profileDone = !onboarding,
     hasJob = !onboarding,
-    jobState = "review";
+    jobState = failed ? "failed" : "review";
+  if (partial) Object.assign(current, { extraction: { complete: false, unreadablePages: [2], uncertainPages: [] } });
   await page.route("**/auth/v1/**", async (route) => {
     if (route.request().url().includes("/settings")) {
       return route.fulfill({
@@ -94,11 +97,12 @@ async function setup(
       created_at: new Date().toISOString(),
       expires_at: new Date(Date.now() + 3600000).toISOString(),
       revision,
+      error_code: failed ? "UNSUPPORTED_CURRENCY" : null,
       content: { corrected: current },
     };
     if (action === "capabilities") {
       return route.fulfill({
-        json: { version: 1, enabled: true, banks: ["NatWest"] },
+        json: { version: 2, enabled: true, format_agnostic: true },
       });
     }
     if (action === "account") {
@@ -149,13 +153,14 @@ async function setup(
       return route.fulfill({
         json: {
           statement: current,
-          checks: { balance: "matches", issues: [] },
+          checks: { balance: "matches", canExport: !partial, issues: partial ? [{ message: "Could not read page 2." }] : [] },
           files: [
             "*Date,*Amount,Description\r\n03/01/2026,-1.00,Test debit\r\n",
           ],
         },
       });
     }
+    if (action === "help") return route.fulfill({ json: {id: "request", share_statement: body.share_statement} });
     if (action === "delete") deleted = true;
     return route.fulfill({ json: {} });
   });
@@ -296,4 +301,36 @@ test("page limit appears only when exhausted or an upload would exceed it", asyn
   await expect(page.locator("#quota")).toBeVisible();
   await expect(page.locator("#quota")).toContainText("make this part of your practice workflow");
   await expect(page.locator("#progress")).toBeHidden();
+});
+
+test("partial results keep rows, label workbook and offer help with optional sharing", async ({ page }) => {
+  await setup(page, {partial:true});
+  await page.getByRole("button", {name:/Ready to review/}).click();
+  await expect(page.locator("#result-status")).toContainText("Partial result");
+  await expect(page.locator("#rows tr")).toHaveCount(1);
+  await expect(page.locator("#xero")).toBeDisabled();
+  await expect(page.locator("#share-statement")).not.toBeChecked();
+  const request = page.waitForRequest(r => r.url().includes('action=help'));
+  await page.getByRole("button", {name:"Request help",exact:true}).click();
+  expect((await request).postDataJSON()).toEqual({id,share_statement:false});
+  await expect(page.locator("#help-status")).toContainText("has not been shared");
+  await page.locator("#share-statement").check();
+  const shared = page.waitForRequest(r => r.url().includes('action=help'));
+  await page.getByRole("button", {name:"Update request"}).click();
+  expect((await shared).postDataJSON()).toEqual({id,share_statement:true});
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", {name:"Download partial Excel"}).click();
+  const file = await download;
+  expect(file.suggestedFilename()).toBe("statement-partial-review.xlsx");
+  const book = new ExcelJS.Workbook(); await book.xlsx.readFile((await file.path())!);
+  expect(book.getWorksheet("Partial transactions")?.rowCount).toBe(2);
+  expect(book.getWorksheet("Checks")?.getCell("B2").value).toContain("PARTIAL EXTRACTION");
+});
+test("failed extraction offers contextual help without presenting finished output", async ({page}) => {
+  await setup(page,{failed:true});
+  await page.getByRole("button",{name:/pages · failed/}).click();
+  await expect(page.locator("#help-message")).toContainText("mixed-currency");
+  await expect(page.locator("#review")).toBeHidden();
+  await page.getByRole("button",{name:"Request help",exact:true}).click();
+  await expect(page.locator("#help-status")).toContainText("Request saved");
 });
