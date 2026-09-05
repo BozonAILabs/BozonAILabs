@@ -1,0 +1,226 @@
+<!doctype html>
+<!-- THESIS: a practical document-to-ledger workspace, with review as the main task.
+OWN-WORLD: existing Bozon forest green, off-white, Caslon headings and readable Geist controls.
+STORY: understand the output, enter contact details, convert, review against source, download.
+FIRST VIEWPORT: compact brand navigation; left editorial introduction, right contact/upload workbench.
+FORM: approved sequential flow leading to a full-width split source/table review. -->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>
+      Bank statement converter | PDF to Excel & Xero CSV | Bozon AI Labs
+    </title>
+    <meta
+      name="description"
+      content="Turn bank statement PDFs into Excel or Xero CSV. Review transactions against the original, check balances and download. We can build conversion into your practice workflow."
+    />
+    <link
+      rel="canonical"
+      href="https://www.bozonailabs.com/tools/bank-statement-converter"
+    />
+    <link rel="icon" href="/bozon-logo.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@400;450;500;550;600&family=Libre+Caslon+Display&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/style.css" />
+    <link rel="stylesheet" href="/src/converter.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to converter</a>
+    <header class="site-header wrap">
+      <a class="brand" href="/" aria-label="Bozon AI Labs home"
+        ><img src="/bozon-logo.png" alt="" width="32" height="32"
+      /></a>
+      <nav aria-label="Main">
+        <a href="/">Our approach</a
+        ><a href="mailto:dev@bozonailabs.com">Let’s talk ↗</a>
+      </nav>
+    </header>
+    <main id="main" class="wrap converter">
+      <div class="tool-intro">
+        <div>
+          <p class="tool-kicker">For accountancy practices</p>
+          <h1>From statement<br />to spreadsheet.</h1>
+          <p>
+            Convert bank statement PDFs from major banks across the UK to Excel
+            or Xero CSV. Review the rows, then download.
+          </p>
+          <p class="workflow-link">
+            We can <a href="/#workflows">build this into your workflow</a>.
+          </p>
+        </div>
+        <section id="workbench" class="workbench" aria-labelledby="work-title">
+          <h2 id="work-title">Bank statement converter</h2>
+          <p id="availability" role="status">Checking availability…</p>
+          <form id="profile" hidden>
+            <h3>Start your free conversion</h3>
+            <label>Your name<input name="name" required maxlength="120" autocomplete="name" /></label>
+            <label>Your email<input name="email" type="email" required maxlength="254" autocomplete="email" /></label>
+            <label>Practice name<input name="practice" required maxlength="180" autocomplete="organization" /></label>
+            <p class="small">By continuing, you accept our <a href="/terms">terms</a> and <a href="/privacy#converter">privacy notice</a>. Your results stay in this browser session.</p>
+            <button class="action">Continue to converter</button>
+          </form>
+          <form id="upload" hidden>
+            <label class="file-picker"
+              >Choose a bank statement<input
+                id="pdf"
+                type="file"
+                accept="application/pdf,.pdf"
+                required
+            /></label>
+            <p class="small">
+              One PDF, up to 20 pages and 10 MB. One account and statement per
+              file.
+            </p>
+            <p class="small">
+              Processed by Mistral. Files and extracted transactions are
+              accessible for 24 hours, or until you delete them.
+              <a href="/privacy#converter">How we handle your data</a>
+            </p>
+            <button class="action">Convert statement ↗</button>
+          </form>
+          <div id="quota" hidden>
+            <h3>Need to convert more?</h3>
+            <p>This conversion would exceed the 50-page free limit.</p>
+            <p>Contact us to make this part of your practice workflow.</p>
+            <a
+              class="action"
+              href="mailto:dev@bozonailabs.com?subject=Workflow%20review"
+              >Contact us ↗</a
+            >
+          </div>
+          <div id="progress" hidden>
+            <h3>Preparing your transactions</h3>
+            <p id="progress-text" role="status"></p>
+            <p class="small">You can return to this page while we work.</p>
+            <button id="cancel" class="secondary">Delete conversion</button>
+          </div>
+          <p id="error" class="error" role="alert" hidden></p>
+        </section>
+      </div>
+      <section id="recent" class="recent" hidden>
+        <h2>Recent conversions</h2>
+        <div id="job-list"></div>
+      </section>
+      <section id="review" class="review" hidden aria-labelledby="review-title">
+        <div class="review-heading">
+          <div>
+            <p class="tool-kicker">Review before importing</p>
+            <h2 id="review-title">Your transactions.</h2>
+            <p id="result-status" role="status"></p>
+            <p id="expiry" class="small"></p>
+          </div>
+          <button id="delete" class="secondary">
+            Delete file & transactions
+          </button>
+        </div>
+        <div id="checks" class="checks" aria-live="polite"></div>
+        <div class="review-tabs">
+          <button id="show-rows" aria-pressed="true">Transactions</button
+          ><button id="show-source" aria-pressed="false">Source PDF</button>
+        </div>
+        <div class="review-grid">
+          <div id="source-view">
+            <iframe title="Original bank statement" id="source"></iframe
+            ><a id="source-link" target="_blank" rel="noopener"
+              >Open source PDF ↗</a
+            >
+          </div>
+          <div id="rows-view">
+            <p class="small">
+              Money in is positive. Money out is negative. Edits are saved only
+              when you choose Save corrections.
+            </p>
+            <div class="table-scroll">
+              <table>
+                <caption class="sr-only">
+                  Extracted transactions. Edit dates, descriptions and amounts.
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Date</th>
+                    <th scope="col">Description</th>
+                    <th scope="col">Amount (£)</th>
+                    <th scope="col">Page</th>
+                  </tr>
+                </thead>
+                <tbody id="rows"></tbody>
+              </table>
+            </div>
+            <button id="save" class="secondary" disabled>
+              Save corrections</button
+            ><span id="save-status" role="status" class="small"></span>
+          </div>
+        </div>
+        <div class="exports">
+          <label id="ack-wrap" hidden
+            ><input id="ack" type="checkbox" /> I have checked the transactions
+            against the statement; balances are unavailable.</label
+          >
+          <p class="small">
+            A matching balance checks the arithmetic. It does not prove every
+            transaction is correct.
+          </p>
+          <div class="export-buttons">
+            <button id="excel" class="action">Download Excel</button
+            ><button id="xero" class="secondary">Download Xero CSV</button>
+          </div>
+        </div>
+        <div id="next-step" class="next-step" hidden>
+          <h3>Want us to simplify the rest of your workflow?</h3>
+          <a href="mailto:dev@bozonailabs.com?subject=Workflow%20review"
+            >Request a workflow review ↗</a
+          ><label
+            ><input id="followup" type="checkbox" /> Please contact me about
+            improving my practice workflows.</label
+          ><button id="request-followup" class="secondary">
+            Save contact request
+          </button>
+          <p id="followup-status" role="status"></p>
+        </div>
+      </section>
+      <section id="statement-help" class="statement-help" hidden aria-labelledby="help-title">
+        <h2 id="help-title">Let’s make this statement work.</h2>
+        <p id="help-message"></p>
+        <p>We can help with this format and build conversion into your practice workflow.</p>
+        <label><input id="share-statement" type="checkbox" /> Allow our team to access this statement and its extracted rows.</label>
+        <p class="small" id="sharing-note">Optional. Access ends when you delete the conversion or its 24-hour storage period expires.</p>
+        <button id="request-help" class="action">Request help</button>
+        <p id="help-status" role="status"></p>
+        <button id="delete-failed" class="secondary" hidden>Delete statement</button>
+      </section>
+      <section class="tool-notes">
+        <h2>Less rekeying.<br />More reviewing.</h2>
+        <div>
+          <h3>Excel for working papers.</h3>
+          <p>
+            Transactions and a separate checks sheet, ready for your review.
+          </p>
+          <h3>CSV for Xero.</h3>
+          <p>
+            Dates, descriptions and signed amounts. Review the checks before
+            importing.
+          </p>
+          <h3>Your source alongside every row.</h3>
+          <p>
+            See where a transaction came from and correct it before download.
+          </p>
+          <h3>Built into your workflow.</h3>
+          <p>
+            We connect statement conversion to the tools your team already uses.
+            <a href="/#workflows">See how we help ↗</a>
+          </p>
+        </div>
+      </section>
+    </main>
+    <footer class="footer wrap">
+      <a href="/#contact">Contact us ↗</a>
+      <div><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></div>
+    </footer>
+    <script type="module" src="/src/converter.ts"></script>
+  </body>
+</html>

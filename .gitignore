@@ -1,1 +1,13 @@
 .idea
+
+.env
+.env.*
+!.env.example
+node_modules/
+.DS_Store
+
+landing-page/test-results/
+landing-page/playwright-report/
+
+# Local runtime credentials, sessions and verification downloads
+.local/
