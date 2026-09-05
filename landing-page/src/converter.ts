@@ -1,4 +1,4 @@
-import { api, client, configured } from "./converter-client";
+import { api, client, configured, ConverterApiError } from "./converter-client";
 import {
   API_VERSION,
   checkStatement,
@@ -21,6 +21,10 @@ let active: any = null,
   timer: number | undefined,
   expiryTimer: number | undefined;
 const error = (e: unknown) => {
+  if (e instanceof ConverterApiError && e.code === "ALLOWANCE") {
+    stage("quota");
+    return;
+  }
   $("error").textContent = e instanceof Error
     ? e.message
     : "Something went wrong. Please try again.";
@@ -136,7 +140,6 @@ async function account(autoOpen = true) {
   const a = await api("account");
   if (started !== epoch || request !== accountRequest) return;
   $("signout").hidden = false;
-  $("allowance").textContent = `${a.remaining} free pages remaining`;
   $("recent").hidden = !a.jobs.length;
   $("job-list").replaceChildren();
   for (const j of a.jobs) {

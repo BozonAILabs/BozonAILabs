@@ -16,7 +16,7 @@ Use the Bozon stack on API port 56321, DB port 56322 and Vite port 5174. This ma
 
 ## Verification
 
-- `./scripts/check.sh`: engine/type checks, build, six mocked browser regression tests and dependency audit.
+- `./scripts/check.sh`: engine/type checks, build, seven mocked browser regression tests and dependency audit.
 - `cat supabase/tests/converter.sql | docker exec -i supabase_db_BozonAILabs psql -U postgres -d postgres`: DB access, lifecycle, quota and concurrency invariants.
 - `python3 scripts/test-local-api.py`: real local API/Storage/Auth tests with manually injected extraction checkpoints. Set `LOCAL_MANUAL_WORKER=true` for this harness, then remove it and restart functions afterward. Production ignores this localhost-only flag. The harness restores disabled settings afterward; restore the intended local bank allowlist before manual use.
 - `deno run --allow-write=.local scripts/create-converter-fixture.ts --boundary`, then `node landing-page/scripts/live-converter.mjs`: opt-in billed live test with actual Mistral, Auth, uploads, Storage, queue and Edge workers. No API responses or successful checkpoints are mocked. It verifies an eight-page/two-chunk PDF, exact transactions, a saved correction, actual workbook/CSV contents, mobile layout and deletion. Synthetic fixtures and output files stay in ignored `.local/`.
@@ -67,4 +67,4 @@ The repository skill `.codex/skills/converter-delivery/SKILL.md` documents deliv
 
 Name, email and practice are required in both the interface and API. The DB stores email separately from Auth; it is unverified. The optional role column preserves legacy profiles but is not collected. Two visitors may enter the same email and still receive different anonymous identities, private files and quotas. The server never retrieves an old session by email. Existing profiles without an email must complete the form before a new upload.
 
-The 50-page allowance is per private browser identity. Clearing browser data or ending a session loses access to its results and can create a fresh allowance. No verified-email or per-person quota is claimed. Follow-up consent remains a separate explicit checkbox after export.
+The 50-page allowance is per private browser identity. Clearing browser data or ending a session loses access to its results and can create a fresh allowance. No verified-email or per-person quota is claimed. The page-limit message and workflow contact action appear only when the allowance is exhausted or an upload would exceed it. Follow-up consent remains a separate explicit checkbox after export.

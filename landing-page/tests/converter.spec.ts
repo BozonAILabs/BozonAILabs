@@ -26,6 +26,8 @@ async function setup(
     delayedSave = false,
     delayedGet = false,
     onboarding = false,
+    remaining = 49,
+    rejectAllowance = false,
   } = {},
 ) {
   const user = {
@@ -102,7 +104,7 @@ async function setup(
     if (action === "account") {
       return route.fulfill({
         json: {
-          remaining: 49,
+          remaining,
           profile: profileDone
             ? { name: "Test", practice: "Test", email: "test@example.test" }
             : null,
@@ -120,6 +122,10 @@ async function setup(
       return route.fulfill({ json: { ...job, state: jobState } });
     }
     if (action === "upload") {
+      if (rejectAllowance) {
+        jobState = "failed";
+        return route.fulfill({ status: 400, json: { error: "ALLOWANCE" } });
+      }
       jobState = "review";
       return route.fulfill({ json: { id } });
     }
@@ -273,4 +279,21 @@ test("old authentication links return to the contact form", async ({ page }) => 
   await page.goto("/auth/callback?error=access_denied");
   await expect(page).toHaveURL(/tools\/bank-statement-converter/);
   await expect(page.getByRole("textbox", { name: "Your email" })).toBeVisible();
+});
+
+test("page limit appears only when exhausted or an upload would exceed it", async ({ page }) => {
+  await setup(page, { remaining: 0 });
+  await expect(page.locator("#quota")).toBeVisible();
+  await expect(page.locator("#quota a")).toHaveAttribute("href", /mailto:dev@bozonailabs.com/);
+  await expect(page.locator("#upload")).toBeHidden();
+
+  await page.unrouteAll({ behavior: "wait" });
+  await setup(page, { rejectAllowance: true });
+  await expect(page.locator("#quota")).toBeHidden();
+  await expect(page.getByText(/free pages remaining|50 free pages in this browser/)).toHaveCount(0);
+  await page.locator("#pdf").setInputFiles({ name: "statement.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4 test") });
+  await page.getByRole("button", { name: "Convert statement" }).click();
+  await expect(page.locator("#quota")).toBeVisible();
+  await expect(page.locator("#quota")).toContainText("make this part of your practice workflow");
+  await expect(page.locator("#progress")).toBeHidden();
 });

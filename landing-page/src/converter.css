@@ -26,7 +26,7 @@
 .tool-kicker {
   font-size: 1rem;
 }
-.allowance-note {
+.workflow-link {
   margin-top: 26px;
   font-size: 1rem;
 }
@@ -115,6 +115,7 @@
   line-height: 1.6;
   color: var(--body);
 }
+.workflow-link a,
 .small a,
 .next-step a,
 .tool-notes a {
@@ -137,9 +138,6 @@
   background: transparent;
   padding: 8px 0;
   font-size: 1rem;
-}
-.allowance {
-  font-weight: 550;
 }
 .recent {
   margin-top: 52px;
@@ -377,3 +375,7 @@ iframe:focus-visible {
 /* Grid children must shrink so the transaction table scrolls inside its panel. */
 .tool-intro > *,
 .review-grid > * { min-width: 0; }
+
+#profile h3 {
+  font: 400 1.625rem/1.2 var(--serif);
+}

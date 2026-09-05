@@ -15,6 +15,13 @@ export const client = configured
     },
   })
   : null;
+export class ConverterApiError extends Error {
+  readonly code: string;
+  constructor(code: string) {
+    super(messages[code] ?? "We couldn’t complete that request. Please try again.");
+    this.code = code;
+  }
+}
 export async function api(
   action: string,
   body: unknown = {},
@@ -43,10 +50,7 @@ export async function api(
     const data = await response.json().catch(() => ({
       error: "REQUEST_FAILED",
     }));
-    throw new Error(
-      messages[data.error] ??
-        "We couldn’t complete that request. Please try again.",
-    );
+    throw new ConverterApiError(data.error);
   }
   return action === "source" ? response.blob() : response.json();
 }

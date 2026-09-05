@@ -1,7 +1,7 @@
 <!doctype html>
 <!-- THESIS: a practical document-to-ledger workspace, with review as the main task.
 OWN-WORLD: existing Bozon forest green, off-white, Caslon headings and readable Geist controls.
-STORY: understand the output and allowance, enter contact details, convert, review against source, download.
+STORY: understand the output, enter contact details, convert, review against source, download.
 FIRST VIEWPORT: compact brand navigation; left editorial introduction, right contact/upload workbench.
 FORM: approved sequential flow leading to a full-width split source/table review. -->
 <html lang="en">
@@ -13,7 +13,7 @@ FORM: approved sequential flow leading to a full-width split source/table review
     </title>
     <meta
       name="description"
-      content="Turn bank statement PDFs into Excel or Xero CSV. Review transactions against the original, check balances and download. 50 free pages in this browser."
+      content="Turn bank statement PDFs into Excel or Xero CSV. Review transactions against the original, check balances and download. We can build conversion into your practice workflow."
     />
     <link
       rel="canonical"
@@ -47,12 +47,12 @@ FORM: approved sequential flow leading to a full-width split source/table review
           <p class="tool-kicker">For accountancy practices</p>
           <h1>From statement<br />to spreadsheet.</h1>
           <p>
-            Convert a bank statement PDF to Excel or Xero CSV. Check the rows.
-            Keep control of the numbers.
+            Convert a bank statement PDF to Excel or Xero CSV. Review the rows,
+            then download.
           </p>
           <p id="banks" class="small"></p>
-          <p class="allowance-note">
-            50 free pages in this browser. No card or password.
+          <p class="workflow-link">
+            We can <a href="/#workflows">build this into your workflow</a>.
           </p>
         </div>
         <section id="workbench" class="workbench" aria-labelledby="work-title">
@@ -67,7 +67,6 @@ FORM: approved sequential flow leading to a full-width split source/table review
             <button class="action">Continue to converter</button>
           </form>
           <form id="upload" hidden>
-            <p id="allowance" class="allowance"></p>
             <label class="file-picker"
               >Choose a bank statement<input
                 id="pdf"
@@ -87,14 +86,13 @@ FORM: approved sequential flow leading to a full-width split source/table review
             <button class="action">Convert statement ↗</button>
           </form>
           <div id="quota" hidden>
-            <h3>You’ve used your free pages.</h3>
-            <p>
-              Talk to us about your workflow. We can add pages after a review.
-            </p>
+            <h3>Need to convert more?</h3>
+            <p>This conversion would exceed the 50-page free limit.</p>
+            <p>Contact us to make this part of your practice workflow.</p>
             <a
               class="action"
               href="mailto:dev@bozonailabs.com?subject=Workflow%20review"
-              >Request a workflow review ↗</a
+              >Contact us ↗</a
             >
           </div>
           <div id="progress" hidden>
@@ -202,11 +200,16 @@ FORM: approved sequential flow leading to a full-width split source/table review
           <p>
             See where a transaction came from and correct it before download.
           </p>
+          <h3>Built into your workflow.</h3>
+          <p>
+            We connect statement conversion to the tools your team already uses.
+            <a href="/#workflows">See how we help ↗</a>
+          </p>
         </div>
       </section>
     </main>
     <footer class="footer wrap">
-      <a href="mailto:dev@bozonailabs.com">dev@bozonailabs.com ↗</a>
+      <a href="/#contact">Contact us ↗</a>
       <div><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></div>
     </footer>
     <script type="module" src="/src/converter.ts"></script>
