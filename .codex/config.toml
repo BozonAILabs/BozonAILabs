@@ -1,0 +1,7 @@
+[mcp_servers.dataforseo]
+command = "npx"
+args = ["-y", "dataforseo-mcp-server"]
+
+[mcp_servers.dataforseo.env]
+DATAFORSEO_USERNAME = "devanshughosh98@gmail.com"
+DATAFORSEO_PASSWORD = "35f3d544dde2f046"
